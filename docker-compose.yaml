@@ -7,6 +7,6 @@ services:
     ports:
       - "3306:3306"
     volumes:
-      - mysql_data:/var/lib/mysql #soldaki benim disk : sağdaki konteynerin içi
+      - mysql_data: /var/lib/mysql #soldaki benim diski : sağdaki konternerin içi
 volumes:
   mysql_data:

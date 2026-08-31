@@ -12,5 +12,12 @@ func main() {
 			200, gin.H{"message": "pong"})
 	})
 
+	r.GET("/hello", func(c *gin.Context){
+		name := c.QueryArray("name") 
+		fmt.Println(name)
+		c.JSON(
+			200, gin.H{"name": name})
+	})
+
 	r.Run()
 }

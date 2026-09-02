@@ -1,13 +1,13 @@
 package config
 
 import (
-	"database/sql"
-	"github.com/jmoiron/sqlx"
-	_ "github.com/go-sql-driver/mysql"
+	"fmt"
 	"log"
 	"os"
+
+	_ "github.com/go-sql-driver/mysql"
+	"github.com/jmoiron/sqlx"
 	_ "github.com/joho/godotenv/autoload"
-	"fmt"
 )
 
 var DB *sqlx.DB

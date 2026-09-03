@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"event-api/config"
 	"event-api/models"
 	"fmt"
 
@@ -10,9 +11,18 @@ import (
 func CreateEvent(c *gin.Context) {
 	
 	var newEvent models.Event
+
 	c.ShouldBindJSON(&newEvent)
+	
 	fmt.Println(newEvent)
-	c.JSON(200, gin.H{ "message": "Event successfully reached", "data": newEvent})
+	
+	query:=`INSERT INTO events (event_id, user_id, event_platform, event_domain, event_source, event_action, event_location, event_payload, event_timestamp) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)`
+
+	_, err := config.DB.Exec(query, newEvent.E_ID, newEvent.U_ID, newEvent.Platform, newEvent.Domain, newEvent.Source, newEvent.Action, newEvent.Location, newEvent.Payload, newEvent.Timestamp)
+
+	if err != nil{
+		c.JSON(500, gin.H{"error": err.Error()})
+		}
 	
 }
 

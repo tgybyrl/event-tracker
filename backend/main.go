@@ -2,10 +2,13 @@ package main
 
 import (
 	"event-api/controllers"
+	"event-api/config"
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
+
+	config.ConnectDB()
 
 	r := gin.Default()
 

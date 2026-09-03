@@ -1,3 +1,5 @@
+-- scratch, not seed data for the real schema
+
 CREATE TABLE events (
     event_id CHAR(36) PRIMARY KEY,
     event_platform VARCHAR(50) NOT NULL,

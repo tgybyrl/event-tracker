@@ -13,21 +13,26 @@ Assumption (unconfirmed): the demo becomes the foundation, not throwaway.
 # Current phase
 
 Go + Gin  →  MySQL. Step 5: wiring the service to the database.
+Data model locked, DB runs, app connects. Next: make `POST /event` correct.
 
 # Mentor's curriculum (from raw notes below, ordered + current status)
 
-1. [~] **Event data model** — research fields and types. `event_id` (UUID,
+1. [x] **Event data model** — research fields and types. `event_id` (UUID,
    always unique), `user_id`. This is a DB table structure; requests are
    built from it, then inserted. Think about which fields are meaningful.
    - Fixed by mentor: `event_platform` (app/web/tablet), `event_domain`
      (site data came from), `event_source` (listing/detail/cart/...).
-   - `schema.sql` + `models/event.go` exist. NOT locked yet — see "Next".
+   - Locked: 9 columns, `schema.sql` == `models/event.go` == INSERT in
+     `controllers/event.go`. `event_location` dropped (geo lives in
+     `event_payload`), `user_ip` added, `user_id` is nullable (`*int`).
 2. [x] **Go + Gin service**, latest version. POST, GET, pull params, print,
    experiment. Docker later if it's in the way.
    - `/ping`, `/hello`, `POST /event` exist. Owe a "why Gin?" write-up.
-3. [~] **MySQL** — install, create table, dummy data, try `SELECT`.
-   - `docker-compose.yaml` (mysql:8.4) exists. `schema.sql` never loaded.
-     DB has not been run yet.
+3. [x] **MySQL** — install, create table, dummy data, try `SELECT`.
+   - `docker compose up -d db` (mysql:8.4), `schema.sql` loaded into
+     `events_db` by hand, `DESCRIBE events` confirms 9 columns, app
+     connects (`sqlx.Connect` = Open + Ping, no `log.Fatal`).
+   - Still owe: some dummy rows + a `SELECT` to eyeball them.
 4. [x] **Go MySQL library** — chose `sqlx` + `go-sql-driver/mysql`
    (+ `godotenv` for `.env`). Owe a "why sqlx?" write-up.
 5. [ ] **Wire it together** — POST from Postman → Gin handler → INSERT.
@@ -45,31 +50,38 @@ If time left: `update` / `delete` / `get` endpoints, REST-ish paths
 
 # Next (smallest steps, in order)
 
-1. **Lock the data model.** Reconcile `models/event.go` ↔ `db/schema.sql`
-   ↔ mentor's field list. Decide:
-   - `user_id` on the `events` row, or a separate linked table? (mentor
-     floated a separate id table)
-   - who generates `event_id` — client, or server-side UUID?
-   - `event_timestamp` — server-set, or lean on the DB `DEFAULT`?
-   - kill or rewrite `db/seed.sql` (currently a 3-column scratch table
-     that it also drops at the end).
-2. **Run MySQL.** `docker compose up db`, load `schema.sql` into
-   `events_db`, confirm the app connects.
-3. **Make `POST /event` correct.** Reject bad JSON (400 + `return`),
-   201 on success, `json.Marshal` the payload before `Exec`, settle
-   timestamp handling.
-4. **Synthetic dataset + request script** (Friday item).
+1. **Make `POST /event` correct.** Currently: bind error ignored, `Payload`
+   (`any`) handed raw to `Exec`, `Timestamp` sent explicitly, no success
+   response, no `return` after 500, `fmt.Println` debug left in.
+   - reject bad JSON → 400 + `return`
+   - `json.Marshal` the payload before `Exec` (or switch field to
+     `json.RawMessage`)
+   - drop `event_timestamp` from the INSERT, let the DB `DEFAULT` fill it
+   - 201 on success
+   - decide: `user_ip` from body, or `c.ClientIP()`?
+2. **Dummy rows + `SELECT`.** Insert a few events, `SELECT * FROM events`
+   to see them (finishes the DB half of mentor step 3).
+3. **Synthetic dataset + request script** (Friday item).
 
 # Done / I can explain this
 
-- (things you've actually understood, not just typed)
+- Request flow: JSON body → `gin.Context` → `ShouldBindJSON` → `Event`
+  struct → `Exec` args → `?` placeholders → MySQL row.
+- Side-effect imports (`_ "...mysql"`, `_ "...godotenv/autoload"`): imported
+  only so their `init()` runs (driver registration / `.env` load).
+- `godotenv/autoload` reads `.env` from the process working directory, so
+  the app needs `backend/.env` when run via `cd backend && go run .`.
+- Docker named volume `mysql_data` persists across `up`/`down`; `down -v`
+  wipes it. That's why an old `events` table survived a schema change.
+- `*int` / `*string` struct fields = nullable columns (`nil` → `NULL`).
 
 # Open questions for mentor
 
-- Separate `user` / id table, or flat `events` row?
-- Is `user_id` required, or nullable for anonymous events?
+- Separate `user` / id table, or keep `user_id` on the flat `events` row?
+- `user_id` is nullable now (anonymous events). OK, or should it be required?
 - Does the demo `events` schema carry into the full project, or is a
   rethink expected later?
+- `event_action`: kept as its own column (not a payload key). Agree?
 
 # Demo shortcuts (already true in the code — revisit later)
 
@@ -77,6 +89,11 @@ If time left: `update` / `delete` / `get` endpoints, REST-ish paths
 - `event_id` trusted from the client; no server-side UUID.
 - `CreateEvent` ignores the JSON bind error and sends no success body.
 - `db/seed.sql` is throwaway scratch, not aligned with `schema.sql`.
+- `.env` exists twice: repo root (for `docker compose`) and `backend/`
+  (for `godotenv/autoload`). Kept in sync by hand.
+- `user_ip` currently comes from the request body, not `c.ClientIP()`.
+- Gin logs "You trusted all proxies" — no trusted-proxy list set.
+- `schema.sql` loaded manually, not via a compose `initdb` mount.
 
 ---
 

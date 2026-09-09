@@ -1,7 +1,8 @@
 package models
 
-import ("time",
-				"encode/json"
+import (
+	"time"
+	"encoding/json"
 )
 
 type Event struct {

@@ -14,10 +14,11 @@ Assumption (unconfirmed): the demo becomes the foundation, not throwaway.
 
 Go + Gin  →  MySQL. Step 5 done: `POST /event` works end to end (bind
 error handled, payload stored as real JSON, DB fills the timestamp, 201
-response). Dummy rows inserted and verified with `SELECT`. Now on the
-Friday deliverable: synthetic dataset generator done
-(`backend/tools/generate`), request script (reads the dataset, POSTs
-each row) is next.
+response). Dummy rows inserted and verified with `SELECT`. Friday
+deliverable done: synthetic dataset generator (`backend/tools/generate`,
+now with per-action `event_payload`) and request script
+(`backend/tools/send`) both built and run end to end — 20/20 events
+posted with `201`, confirmed with `SELECT COUNT(*) FROM events;`.
 
 # Mentor's curriculum (from raw notes below, ordered + current status)
 
@@ -60,20 +61,20 @@ If time left: `update` / `delete` / `get` endpoints, REST-ish paths
   `backend/tools/generate` (`go run ./tools/generate`) writes
   `backend/events.json` — random platform/domain/source/action per
   event via `randomChoice`, `UserID`/`UserIP` randomly nil-or-set to
-  represent anonymous vs. logged-in events, fixed sample `event_payload`
-  (not yet varied per action — open item below).
-- [ ] Script that turns the dataset into `POST /event` requests.
+  represent anonymous vs. logged-in events. `event_payload` now varies
+  per `event_action` via an `actionPayloads` map + `payloadFor()`
+  lookup — panics if an action is missing from the map (deliberate:
+  catch a drifted `actions`/`actionPayloads` pair at generation time,
+  not silently).
+- [x] Script that turns the dataset into `POST /event` requests.
+  `backend/tools/send` (`go run ./tools/send`) reads `events.json`,
+  POSTs each event to `http://127.0.0.1:8080/event`, prints
+  status/result per request plus a sent/failed summary. Verified: 20/20
+  `201`, `SELECT COUNT(*)` confirmed rows landed.
 
 # Next (smallest steps, in order)
 
-1. **Request script.** New `backend/tools/send` (own `package main`,
-   same reasoning as `tools/generate` — a package can only have one
-   `main()`). Reads `backend/events.json`, POSTs each event to
-   `http://127.0.0.1:8080/event`, prints status/result per request.
-2. **Decide:** vary `event_payload` per `event_action` in the generator
-   (currently one fixed payload for every event), or leave it — not
-   blocking the request script.
-3. `user_ip` from body vs. `c.ClientIP()` — still open, noted below too.
+1. `user_ip` from body vs. `c.ClientIP()` — still open, noted below too.
 
 # Done / I can explain this
 

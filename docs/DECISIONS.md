@@ -56,6 +56,22 @@ What I chose and why: `user_id INT` nullable in the schema, `*int` in the
   wanted instead.
 What I'd do differently: TODO
 
+## 2026-09-15 — `payloadFor` panics on an unmapped action
+
+Problem: `event_payload` now varies per `event_action` via an
+  `actionPayloads` map in `tools/generate`. `actions` and
+  `actionPayloads` are two separate lists that must stay in sync — if a
+  new action is added to `actions` without a matching entry in
+  `actionPayloads`, the lookup misses.
+What I tried: TODO
+What I chose and why: `payloadFor` panics immediately if the map lookup
+  misses (`ok == false`), instead of falling back to a default payload
+  or silently skipping the event. This is generator tooling I run
+  myself, not a live service — a missing entry means I forgot to update
+  the map, and I want that caught the moment I run it, not hidden in
+  output I might not inspect closely.
+What I'd do differently: TODO
+
 ## 2026-09-04 — `.env` kept in two places
 
 Problem: `docker compose` reads `.env` from the repo root; the Go app's

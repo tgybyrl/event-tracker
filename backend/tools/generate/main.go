@@ -16,6 +16,27 @@ var platforms = []string{"web", "app", "tablet"}
 var domains = []string{"flo.com.tr", "flo.com"}
 var source = []string{"listing", "detail", "cart"}
 var actions = []string{"product_click", "add_to_cart", "checkout_start"}
+var actionPayloads = map[string]string{
+      "product_click": `{
+              "product_id": 553,
+              "product_type": "Shoes",
+              "category": "Running",
+              "brand": "FLO"
+      }`,
+      "add_to_cart": `{
+              "product_id": 553,
+              "product_type": "Shoes",
+              "quantity": 1,
+              "price": 1299.90,
+              "currency": "TRY"
+      }`,
+      "checkout_start": `{
+              "cart_total": 2599.80,
+              "item_count": 2,
+              "currency": "TRY"
+      }`,
+}
+
 
 func randomEventID() string {
 	key_id := make([]byte, 16)
@@ -49,11 +70,10 @@ func randomEvent() models.Event {
 		userIP = &ip
 	}
 
+	action := randomChoice(actions)
 
-	payloadJSON := `{
-		"product_id": 553,
-		"product_type": "Shoes" 
-	}`
+
+	payloadJSON := payloadFor(action)
 
 	return models.Event{		
 		EventID: randomEventID(),
@@ -62,7 +82,7 @@ func randomEvent() models.Event {
 		Platform: randomChoice(platforms),
 		Domain: randomChoice(domains),
 		Source: randomChoice(source),
-		Action: randomChoice(actions),
+		Action: action,
 		Payload:json.RawMessage(payloadJSON),
 	}
 }
@@ -82,4 +102,12 @@ func main() {
 	if err != nil {
 		fmt.Println("Error writing file:", err)
 	}
+}
+
+func payloadFor(action string) string {
+	payload, ok := actionPayloads[action]
+	if !ok {
+		panic("no payload for action: " + action)
+	}
+	return payload
 }

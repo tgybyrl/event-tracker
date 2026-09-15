@@ -1,161 +1,73 @@
 [
   {
-    "event_id": "ba7bf33d-1072-e7e4-be1f-87c6576a3453",
-    "user_id": 957,
-    "user_ip": "127.0.0.1",
-    "event_platform": "web",
-    "event_domain": "flo.com.tr",
-    "event_source": "detail",
-    "event_action": "checkout_start",
-    "event_payload": {
-      "product_id": 553,
-      "product_type": "Shoes"
-    },
-    "event_timestamp": "0001-01-01T00:00:00Z"
-  },
-  {
-    "event_id": "a4722d17-7c00-4196-cb8a-8e3654ffa2c8",
-    "user_id": null,
-    "user_ip": null,
-    "event_platform": "web",
-    "event_domain": "flo.com",
-    "event_source": "cart",
-    "event_action": "product_click",
-    "event_payload": {
-      "product_id": 553,
-      "product_type": "Shoes"
-    },
-    "event_timestamp": "0001-01-01T00:00:00Z"
-  },
-  {
-    "event_id": "f02ba1b3-9932-ddf3-8b15-437cff076d3e",
-    "user_id": null,
-    "user_ip": "127.0.0.1",
-    "event_platform": "web",
-    "event_domain": "flo.com",
-    "event_source": "detail",
-    "event_action": "product_click",
-    "event_payload": {
-      "product_id": 553,
-      "product_type": "Shoes"
-    },
-    "event_timestamp": "0001-01-01T00:00:00Z"
-  },
-  {
-    "event_id": "64a3cfc6-8eb9-8c07-f83e-1b8293ca250e",
-    "user_id": null,
+    "event_id": "87b44189-eb1d-ebee-d71b-a37c3bae93cc",
+    "user_id": 127,
     "user_ip": "127.0.0.1",
     "event_platform": "tablet",
     "event_domain": "flo.com",
-    "event_source": "detail",
-    "event_action": "checkout_start",
+    "event_source": "listing",
+    "event_action": "add_to_cart",
     "event_payload": {
       "product_id": 553,
-      "product_type": "Shoes"
+      "product_type": "Shoes",
+      "quantity": 1,
+      "price": 1299.90,
+      "currency": "TRY"
     },
     "event_timestamp": "0001-01-01T00:00:00Z"
   },
   {
-    "event_id": "d71d25cf-4691-3283-bdc5-3d3e19ade597",
-    "user_id": 970,
+    "event_id": "859c3007-c626-6add-f66c-54a65eb98ae5",
+    "user_id": null,
+    "user_ip": null,
+    "event_platform": "app",
+    "event_domain": "flo.com",
+    "event_source": "listing",
+    "event_action": "product_click",
+    "event_payload": {
+      "product_id": 553,
+      "product_type": "Shoes",
+      "category": "Running",
+      "brand": "FLO"
+    },
+    "event_timestamp": "0001-01-01T00:00:00Z"
+  },
+  {
+    "event_id": "2549b9a3-6bbb-607a-1d91-89a331b5293d",
+    "user_id": 929,
     "user_ip": "127.0.0.1",
     "event_platform": "app",
-    "event_domain": "flo.com.tr",
-    "event_source": "listing",
-    "event_action": "checkout_start",
-    "event_payload": {
-      "product_id": 553,
-      "product_type": "Shoes"
-    },
-    "event_timestamp": "0001-01-01T00:00:00Z"
-  },
-  {
-    "event_id": "68d316ac-4f84-c28b-d435-88f0544b6e2f",
-    "user_id": null,
-    "user_ip": "127.0.0.1",
-    "event_platform": "tablet",
-    "event_domain": "flo.com.tr",
-    "event_source": "listing",
-    "event_action": "checkout_start",
-    "event_payload": {
-      "product_id": 553,
-      "product_type": "Shoes"
-    },
-    "event_timestamp": "0001-01-01T00:00:00Z"
-  },
-  {
-    "event_id": "7584d390-35bf-56a5-3a46-5348020e6bab",
-    "user_id": null,
-    "user_ip": null,
-    "event_platform": "tablet",
     "event_domain": "flo.com",
-    "event_source": "listing",
+    "event_source": "detail",
     "event_action": "add_to_cart",
     "event_payload": {
       "product_id": 553,
-      "product_type": "Shoes"
+      "product_type": "Shoes",
+      "quantity": 1,
+      "price": 1299.90,
+      "currency": "TRY"
     },
     "event_timestamp": "0001-01-01T00:00:00Z"
   },
   {
-    "event_id": "1904d3b8-74fd-1e4c-637a-d2b5ab1ec16f",
-    "user_id": 300,
+    "event_id": "870c3510-d93b-f0f3-568e-e9e23dfc5f59",
+    "user_id": 905,
     "user_ip": null,
-    "event_platform": "tablet",
-    "event_domain": "flo.com.tr",
-    "event_source": "cart",
+    "event_platform": "web",
+    "event_domain": "flo.com",
+    "event_source": "listing",
     "event_action": "product_click",
     "event_payload": {
       "product_id": 553,
-      "product_type": "Shoes"
+      "product_type": "Shoes",
+      "category": "Running",
+      "brand": "FLO"
     },
     "event_timestamp": "0001-01-01T00:00:00Z"
   },
   {
-    "event_id": "20f29095-bd27-0db8-2714-eb6a32680388",
-    "user_id": 343,
-    "user_ip": null,
-    "event_platform": "tablet",
-    "event_domain": "flo.com",
-    "event_source": "listing",
-    "event_action": "checkout_start",
-    "event_payload": {
-      "product_id": 553,
-      "product_type": "Shoes"
-    },
-    "event_timestamp": "0001-01-01T00:00:00Z"
-  },
-  {
-    "event_id": "d508690d-1a31-44ce-15ac-cef6fc9674cc",
-    "user_id": null,
-    "user_ip": null,
-    "event_platform": "tablet",
-    "event_domain": "flo.com",
-    "event_source": "cart",
-    "event_action": "add_to_cart",
-    "event_payload": {
-      "product_id": 553,
-      "product_type": "Shoes"
-    },
-    "event_timestamp": "0001-01-01T00:00:00Z"
-  },
-  {
-    "event_id": "dd66f025-7057-48c5-79bb-a613a8adc5a5",
-    "user_id": 915,
-    "user_ip": "127.0.0.1",
-    "event_platform": "web",
-    "event_domain": "flo.com.tr",
-    "event_source": "cart",
-    "event_action": "checkout_start",
-    "event_payload": {
-      "product_id": 553,
-      "product_type": "Shoes"
-    },
-    "event_timestamp": "0001-01-01T00:00:00Z"
-  },
-  {
-    "event_id": "9d170b3f-3995-4205-76c7-54926b7fe58d",
-    "user_id": 219,
+    "event_id": "0949d8e4-e8bd-5c96-ff9b-0cf745681e56",
+    "user_id": 409,
     "user_ip": "127.0.0.1",
     "event_platform": "app",
     "event_domain": "flo.com",
@@ -163,119 +75,257 @@
     "event_action": "add_to_cart",
     "event_payload": {
       "product_id": 553,
-      "product_type": "Shoes"
+      "product_type": "Shoes",
+      "quantity": 1,
+      "price": 1299.90,
+      "currency": "TRY"
     },
     "event_timestamp": "0001-01-01T00:00:00Z"
   },
   {
-    "event_id": "b326673b-4b3b-7eda-7798-34cdbf31449a",
+    "event_id": "4cd2ab48-f3aa-550d-92c7-187a07579d15",
     "user_id": null,
     "user_ip": "127.0.0.1",
     "event_platform": "tablet",
     "event_domain": "flo.com.tr",
-    "event_source": "listing",
-    "event_action": "checkout_start",
+    "event_source": "cart",
+    "event_action": "add_to_cart",
     "event_payload": {
       "product_id": 553,
-      "product_type": "Shoes"
+      "product_type": "Shoes",
+      "quantity": 1,
+      "price": 1299.90,
+      "currency": "TRY"
     },
     "event_timestamp": "0001-01-01T00:00:00Z"
   },
   {
-    "event_id": "589f1f91-44c6-57fc-b20d-358c9591904c",
-    "user_id": 783,
-    "user_ip": null,
-    "event_platform": "app",
+    "event_id": "944385be-9dba-569a-7db7-c400c81db08f",
+    "user_id": null,
+    "user_ip": "127.0.0.1",
+    "event_platform": "web",
     "event_domain": "flo.com",
-    "event_source": "cart",
+    "event_source": "listing",
     "event_action": "product_click",
     "event_payload": {
       "product_id": 553,
-      "product_type": "Shoes"
+      "product_type": "Shoes",
+      "category": "Running",
+      "brand": "FLO"
     },
     "event_timestamp": "0001-01-01T00:00:00Z"
   },
   {
-    "event_id": "259e25cd-e372-ce7a-9575-2c8bb4a4e4c5",
-    "user_id": 894,
+    "event_id": "eebe8dd0-e684-0600-5d30-e6293d0fb686",
+    "user_id": 703,
+    "user_ip": "127.0.0.1",
+    "event_platform": "web",
+    "event_domain": "flo.com.tr",
+    "event_source": "cart",
+    "event_action": "add_to_cart",
+    "event_payload": {
+      "product_id": 553,
+      "product_type": "Shoes",
+      "quantity": 1,
+      "price": 1299.90,
+      "currency": "TRY"
+    },
+    "event_timestamp": "0001-01-01T00:00:00Z"
+  },
+  {
+    "event_id": "a5661e20-14b2-d69e-757a-76fcea926226",
+    "user_id": null,
     "user_ip": null,
     "event_platform": "tablet",
     "event_domain": "flo.com.tr",
-    "event_source": "listing",
-    "event_action": "product_click",
+    "event_source": "cart",
+    "event_action": "add_to_cart",
     "event_payload": {
       "product_id": 553,
-      "product_type": "Shoes"
+      "product_type": "Shoes",
+      "quantity": 1,
+      "price": 1299.90,
+      "currency": "TRY"
     },
     "event_timestamp": "0001-01-01T00:00:00Z"
   },
   {
-    "event_id": "eeee55dd-4e32-794f-fc30-27dbe6b0ce70",
-    "user_id": 396,
-    "user_ip": "127.0.0.1",
-    "event_platform": "app",
+    "event_id": "aa57ce51-1a30-cf11-e4ab-64aecb4b1365",
+    "user_id": 867,
+    "user_ip": null,
+    "event_platform": "tablet",
     "event_domain": "flo.com.tr",
     "event_source": "detail",
-    "event_action": "checkout_start",
+    "event_action": "product_click",
     "event_payload": {
       "product_id": 553,
-      "product_type": "Shoes"
+      "product_type": "Shoes",
+      "category": "Running",
+      "brand": "FLO"
     },
     "event_timestamp": "0001-01-01T00:00:00Z"
   },
   {
-    "event_id": "0fdf44c5-857e-b319-9544-8933a3455606",
+    "event_id": "82f6e7aa-63f3-0dc1-a0f5-1ad30471ea51",
     "user_id": null,
     "user_ip": null,
-    "event_platform": "app",
+    "event_platform": "web",
+    "event_domain": "flo.com.tr",
+    "event_source": "listing",
+    "event_action": "product_click",
+    "event_payload": {
+      "product_id": 553,
+      "product_type": "Shoes",
+      "category": "Running",
+      "brand": "FLO"
+    },
+    "event_timestamp": "0001-01-01T00:00:00Z"
+  },
+  {
+    "event_id": "c0d18dba-5ada-4579-21b9-355710532148",
+    "user_id": null,
+    "user_ip": "127.0.0.1",
+    "event_platform": "tablet",
     "event_domain": "flo.com.tr",
     "event_source": "detail",
     "event_action": "add_to_cart",
     "event_payload": {
       "product_id": 553,
-      "product_type": "Shoes"
+      "product_type": "Shoes",
+      "quantity": 1,
+      "price": 1299.90,
+      "currency": "TRY"
     },
     "event_timestamp": "0001-01-01T00:00:00Z"
   },
   {
-    "event_id": "7f4716a0-e597-28ce-a8e6-7f648af4d5dc",
-    "user_id": null,
+    "event_id": "4458dedf-7f0d-25c7-4aee-e62aab66d70d",
+    "user_id": 972,
     "user_ip": null,
     "event_platform": "web",
     "event_domain": "flo.com",
     "event_source": "cart",
-    "event_action": "checkout_start",
+    "event_action": "add_to_cart",
     "event_payload": {
       "product_id": 553,
-      "product_type": "Shoes"
+      "product_type": "Shoes",
+      "quantity": 1,
+      "price": 1299.90,
+      "currency": "TRY"
     },
     "event_timestamp": "0001-01-01T00:00:00Z"
   },
   {
-    "event_id": "11ea72d9-e685-7f47-d6b6-f50eabb301aa",
-    "user_id": 347,
+    "event_id": "2978a44e-a98e-7472-59f7-e540a73552ab",
+    "user_id": 285,
+    "user_ip": "127.0.0.1",
+    "event_platform": "tablet",
+    "event_domain": "flo.com",
+    "event_source": "cart",
+    "event_action": "add_to_cart",
+    "event_payload": {
+      "product_id": 553,
+      "product_type": "Shoes",
+      "quantity": 1,
+      "price": 1299.90,
+      "currency": "TRY"
+    },
+    "event_timestamp": "0001-01-01T00:00:00Z"
+  },
+  {
+    "event_id": "51eb59a1-3016-2585-9562-7d101218e79a",
+    "user_id": 388,
+    "user_ip": "127.0.0.1",
+    "event_platform": "tablet",
+    "event_domain": "flo.com.tr",
+    "event_source": "cart",
+    "event_action": "checkout_start",
+    "event_payload": {
+      "cart_total": 2599.80,
+      "item_count": 2,
+      "currency": "TRY"
+    },
+    "event_timestamp": "0001-01-01T00:00:00Z"
+  },
+  {
+    "event_id": "61ae25a0-506a-2062-8e23-bd44f7cd58f4",
+    "user_id": null,
+    "user_ip": "127.0.0.1",
+    "event_platform": "app",
+    "event_domain": "flo.com",
+    "event_source": "listing",
+    "event_action": "product_click",
+    "event_payload": {
+      "product_id": 553,
+      "product_type": "Shoes",
+      "category": "Running",
+      "brand": "FLO"
+    },
+    "event_timestamp": "0001-01-01T00:00:00Z"
+  },
+  {
+    "event_id": "4201a11c-36c4-1d8b-361a-57a73c80ac8b",
+    "user_id": null,
+    "user_ip": null,
+    "event_platform": "tablet",
+    "event_domain": "flo.com.tr",
+    "event_source": "listing",
+    "event_action": "add_to_cart",
+    "event_payload": {
+      "product_id": 553,
+      "product_type": "Shoes",
+      "quantity": 1,
+      "price": 1299.90,
+      "currency": "TRY"
+    },
+    "event_timestamp": "0001-01-01T00:00:00Z"
+  },
+  {
+    "event_id": "032fc12a-e53a-0fb3-99fc-ac50c12a2454",
+    "user_id": 712,
+    "user_ip": "127.0.0.1",
+    "event_platform": "web",
+    "event_domain": "flo.com",
+    "event_source": "cart",
+    "event_action": "add_to_cart",
+    "event_payload": {
+      "product_id": 553,
+      "product_type": "Shoes",
+      "quantity": 1,
+      "price": 1299.90,
+      "currency": "TRY"
+    },
+    "event_timestamp": "0001-01-01T00:00:00Z"
+  },
+  {
+    "event_id": "6d56eba8-960d-6511-e137-f93dbffd48cf",
+    "user_id": 273,
+    "user_ip": null,
+    "event_platform": "tablet",
+    "event_domain": "flo.com.tr",
+    "event_source": "listing",
+    "event_action": "product_click",
+    "event_payload": {
+      "product_id": 553,
+      "product_type": "Shoes",
+      "category": "Running",
+      "brand": "FLO"
+    },
+    "event_timestamp": "0001-01-01T00:00:00Z"
+  },
+  {
+    "event_id": "5800ba31-615b-1678-46cc-1d29ae1eef04",
+    "user_id": null,
     "user_ip": null,
     "event_platform": "tablet",
     "event_domain": "flo.com",
-    "event_source": "listing",
-    "event_action": "checkout_start",
+    "event_source": "cart",
+    "event_action": "product_click",
     "event_payload": {
       "product_id": 553,
-      "product_type": "Shoes"
-    },
-    "event_timestamp": "0001-01-01T00:00:00Z"
-  },
-  {
-    "event_id": "890f2ae7-5314-3e4f-d33d-f6b649b8bf6d",
-    "user_id": 580,
-    "user_ip": null,
-    "event_platform": "web",
-    "event_domain": "flo.com",
-    "event_source": "detail",
-    "event_action": "checkout_start",
-    "event_payload": {
-      "product_id": 553,
-      "product_type": "Shoes"
+      "product_type": "Shoes",
+      "category": "Running",
+      "brand": "FLO"
     },
     "event_timestamp": "0001-01-01T00:00:00Z"
   }

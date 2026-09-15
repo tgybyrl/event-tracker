@@ -12,8 +12,12 @@ Assumption (unconfirmed): the demo becomes the foundation, not throwaway.
 
 # Current phase
 
-Go + Gin  →  MySQL. Step 5: wiring the service to the database.
-Data model locked, DB runs, app connects. Next: make `POST /event` correct.
+Go + Gin  →  MySQL. Step 5 done: `POST /event` works end to end (bind
+error handled, payload stored as real JSON, DB fills the timestamp, 201
+response). Dummy rows inserted and verified with `SELECT`. Now on the
+Friday deliverable: synthetic dataset generator done
+(`backend/tools/generate`), request script (reads the dataset, POSTs
+each row) is next.
 
 # Mentor's curriculum (from raw notes below, ordered + current status)
 
@@ -32,12 +36,19 @@ Data model locked, DB runs, app connects. Next: make `POST /event` correct.
    - `docker compose up -d db` (mysql:8.4), `schema.sql` loaded into
      `events_db` by hand, `DESCRIBE events` confirms 9 columns, app
      connects (`sqlx.Connect` = Open + Ping, no `log.Fatal`).
-   - Still owe: some dummy rows + a `SELECT` to eyeball them.
+   - Dummy rows inserted via `POST /event` (real request path, not a
+     manual `INSERT`), confirmed with `SELECT * FROM events;`.
 4. [x] **Go MySQL library** — chose `sqlx` + `go-sql-driver/mysql`
    (+ `godotenv` for `.env`). Owe a "why sqlx?" write-up.
-5. [ ] **Wire it together** — POST from Postman → Gin handler → INSERT.
+5. [x] **Wire it together** — POST from Postman → Gin handler → INSERT.
    Mentor's toy version is `customer(id, name, surname)`; we're doing it
    straight on `events`.
+   - `ShouldBindJSON` error now checked (400 + return), `event_payload`
+     switched from `any` to `json.RawMessage` (matches MySQL `JSON`
+     column without a marshal round-trip), `event_timestamp` dropped
+     from the INSERT (DB `DEFAULT` fills it), `return` added after the
+     500 case, 201 + `event_id` returned on success, debug `fmt.Println`
+     removed.
 6. [ ] **PHP admin panel** — later phase, mentor has separate notes.
 
 If time left: `update` / `delete` / `get` endpoints, REST-ish paths
@@ -45,23 +56,24 @@ If time left: `update` / `delete` / `get` endpoints, REST-ish paths
 
 # Friday deliverable (mentor)
 
-- [ ] Synthetic event dataset matching the locked model.
+- [x] Synthetic event dataset matching the locked model.
+  `backend/tools/generate` (`go run ./tools/generate`) writes
+  `backend/events.json` — random platform/domain/source/action per
+  event via `randomChoice`, `UserID`/`UserIP` randomly nil-or-set to
+  represent anonymous vs. logged-in events, fixed sample `event_payload`
+  (not yet varied per action — open item below).
 - [ ] Script that turns the dataset into `POST /event` requests.
 
 # Next (smallest steps, in order)
 
-1. **Make `POST /event` correct.** Currently: bind error ignored, `Payload`
-   (`any`) handed raw to `Exec`, `Timestamp` sent explicitly, no success
-   response, no `return` after 500, `fmt.Println` debug left in.
-   - reject bad JSON → 400 + `return`
-   - `json.Marshal` the payload before `Exec` (or switch field to
-     `json.RawMessage`)
-   - drop `event_timestamp` from the INSERT, let the DB `DEFAULT` fill it
-   - 201 on success
-   - decide: `user_ip` from body, or `c.ClientIP()`?
-2. **Dummy rows + `SELECT`.** Insert a few events, `SELECT * FROM events`
-   to see them (finishes the DB half of mentor step 3).
-3. **Synthetic dataset + request script** (Friday item).
+1. **Request script.** New `backend/tools/send` (own `package main`,
+   same reasoning as `tools/generate` — a package can only have one
+   `main()`). Reads `backend/events.json`, POSTs each event to
+   `http://127.0.0.1:8080/event`, prints status/result per request.
+2. **Decide:** vary `event_payload` per `event_action` in the generator
+   (currently one fixed payload for every event), or leave it — not
+   blocking the request script.
+3. `user_ip` from body vs. `c.ClientIP()` — still open, noted below too.
 
 # Done / I can explain this
 

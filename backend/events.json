@@ -1,0 +1,282 @@
+[
+  {
+    "event_id": "ba7bf33d-1072-e7e4-be1f-87c6576a3453",
+    "user_id": 957,
+    "user_ip": "127.0.0.1",
+    "event_platform": "web",
+    "event_domain": "flo.com.tr",
+    "event_source": "detail",
+    "event_action": "checkout_start",
+    "event_payload": {
+      "product_id": 553,
+      "product_type": "Shoes"
+    },
+    "event_timestamp": "0001-01-01T00:00:00Z"
+  },
+  {
+    "event_id": "a4722d17-7c00-4196-cb8a-8e3654ffa2c8",
+    "user_id": null,
+    "user_ip": null,
+    "event_platform": "web",
+    "event_domain": "flo.com",
+    "event_source": "cart",
+    "event_action": "product_click",
+    "event_payload": {
+      "product_id": 553,
+      "product_type": "Shoes"
+    },
+    "event_timestamp": "0001-01-01T00:00:00Z"
+  },
+  {
+    "event_id": "f02ba1b3-9932-ddf3-8b15-437cff076d3e",
+    "user_id": null,
+    "user_ip": "127.0.0.1",
+    "event_platform": "web",
+    "event_domain": "flo.com",
+    "event_source": "detail",
+    "event_action": "product_click",
+    "event_payload": {
+      "product_id": 553,
+      "product_type": "Shoes"
+    },
+    "event_timestamp": "0001-01-01T00:00:00Z"
+  },
+  {
+    "event_id": "64a3cfc6-8eb9-8c07-f83e-1b8293ca250e",
+    "user_id": null,
+    "user_ip": "127.0.0.1",
+    "event_platform": "tablet",
+    "event_domain": "flo.com",
+    "event_source": "detail",
+    "event_action": "checkout_start",
+    "event_payload": {
+      "product_id": 553,
+      "product_type": "Shoes"
+    },
+    "event_timestamp": "0001-01-01T00:00:00Z"
+  },
+  {
+    "event_id": "d71d25cf-4691-3283-bdc5-3d3e19ade597",
+    "user_id": 970,
+    "user_ip": "127.0.0.1",
+    "event_platform": "app",
+    "event_domain": "flo.com.tr",
+    "event_source": "listing",
+    "event_action": "checkout_start",
+    "event_payload": {
+      "product_id": 553,
+      "product_type": "Shoes"
+    },
+    "event_timestamp": "0001-01-01T00:00:00Z"
+  },
+  {
+    "event_id": "68d316ac-4f84-c28b-d435-88f0544b6e2f",
+    "user_id": null,
+    "user_ip": "127.0.0.1",
+    "event_platform": "tablet",
+    "event_domain": "flo.com.tr",
+    "event_source": "listing",
+    "event_action": "checkout_start",
+    "event_payload": {
+      "product_id": 553,
+      "product_type": "Shoes"
+    },
+    "event_timestamp": "0001-01-01T00:00:00Z"
+  },
+  {
+    "event_id": "7584d390-35bf-56a5-3a46-5348020e6bab",
+    "user_id": null,
+    "user_ip": null,
+    "event_platform": "tablet",
+    "event_domain": "flo.com",
+    "event_source": "listing",
+    "event_action": "add_to_cart",
+    "event_payload": {
+      "product_id": 553,
+      "product_type": "Shoes"
+    },
+    "event_timestamp": "0001-01-01T00:00:00Z"
+  },
+  {
+    "event_id": "1904d3b8-74fd-1e4c-637a-d2b5ab1ec16f",
+    "user_id": 300,
+    "user_ip": null,
+    "event_platform": "tablet",
+    "event_domain": "flo.com.tr",
+    "event_source": "cart",
+    "event_action": "product_click",
+    "event_payload": {
+      "product_id": 553,
+      "product_type": "Shoes"
+    },
+    "event_timestamp": "0001-01-01T00:00:00Z"
+  },
+  {
+    "event_id": "20f29095-bd27-0db8-2714-eb6a32680388",
+    "user_id": 343,
+    "user_ip": null,
+    "event_platform": "tablet",
+    "event_domain": "flo.com",
+    "event_source": "listing",
+    "event_action": "checkout_start",
+    "event_payload": {
+      "product_id": 553,
+      "product_type": "Shoes"
+    },
+    "event_timestamp": "0001-01-01T00:00:00Z"
+  },
+  {
+    "event_id": "d508690d-1a31-44ce-15ac-cef6fc9674cc",
+    "user_id": null,
+    "user_ip": null,
+    "event_platform": "tablet",
+    "event_domain": "flo.com",
+    "event_source": "cart",
+    "event_action": "add_to_cart",
+    "event_payload": {
+      "product_id": 553,
+      "product_type": "Shoes"
+    },
+    "event_timestamp": "0001-01-01T00:00:00Z"
+  },
+  {
+    "event_id": "dd66f025-7057-48c5-79bb-a613a8adc5a5",
+    "user_id": 915,
+    "user_ip": "127.0.0.1",
+    "event_platform": "web",
+    "event_domain": "flo.com.tr",
+    "event_source": "cart",
+    "event_action": "checkout_start",
+    "event_payload": {
+      "product_id": 553,
+      "product_type": "Shoes"
+    },
+    "event_timestamp": "0001-01-01T00:00:00Z"
+  },
+  {
+    "event_id": "9d170b3f-3995-4205-76c7-54926b7fe58d",
+    "user_id": 219,
+    "user_ip": "127.0.0.1",
+    "event_platform": "app",
+    "event_domain": "flo.com",
+    "event_source": "cart",
+    "event_action": "add_to_cart",
+    "event_payload": {
+      "product_id": 553,
+      "product_type": "Shoes"
+    },
+    "event_timestamp": "0001-01-01T00:00:00Z"
+  },
+  {
+    "event_id": "b326673b-4b3b-7eda-7798-34cdbf31449a",
+    "user_id": null,
+    "user_ip": "127.0.0.1",
+    "event_platform": "tablet",
+    "event_domain": "flo.com.tr",
+    "event_source": "listing",
+    "event_action": "checkout_start",
+    "event_payload": {
+      "product_id": 553,
+      "product_type": "Shoes"
+    },
+    "event_timestamp": "0001-01-01T00:00:00Z"
+  },
+  {
+    "event_id": "589f1f91-44c6-57fc-b20d-358c9591904c",
+    "user_id": 783,
+    "user_ip": null,
+    "event_platform": "app",
+    "event_domain": "flo.com",
+    "event_source": "cart",
+    "event_action": "product_click",
+    "event_payload": {
+      "product_id": 553,
+      "product_type": "Shoes"
+    },
+    "event_timestamp": "0001-01-01T00:00:00Z"
+  },
+  {
+    "event_id": "259e25cd-e372-ce7a-9575-2c8bb4a4e4c5",
+    "user_id": 894,
+    "user_ip": null,
+    "event_platform": "tablet",
+    "event_domain": "flo.com.tr",
+    "event_source": "listing",
+    "event_action": "product_click",
+    "event_payload": {
+      "product_id": 553,
+      "product_type": "Shoes"
+    },
+    "event_timestamp": "0001-01-01T00:00:00Z"
+  },
+  {
+    "event_id": "eeee55dd-4e32-794f-fc30-27dbe6b0ce70",
+    "user_id": 396,
+    "user_ip": "127.0.0.1",
+    "event_platform": "app",
+    "event_domain": "flo.com.tr",
+    "event_source": "detail",
+    "event_action": "checkout_start",
+    "event_payload": {
+      "product_id": 553,
+      "product_type": "Shoes"
+    },
+    "event_timestamp": "0001-01-01T00:00:00Z"
+  },
+  {
+    "event_id": "0fdf44c5-857e-b319-9544-8933a3455606",
+    "user_id": null,
+    "user_ip": null,
+    "event_platform": "app",
+    "event_domain": "flo.com.tr",
+    "event_source": "detail",
+    "event_action": "add_to_cart",
+    "event_payload": {
+      "product_id": 553,
+      "product_type": "Shoes"
+    },
+    "event_timestamp": "0001-01-01T00:00:00Z"
+  },
+  {
+    "event_id": "7f4716a0-e597-28ce-a8e6-7f648af4d5dc",
+    "user_id": null,
+    "user_ip": null,
+    "event_platform": "web",
+    "event_domain": "flo.com",
+    "event_source": "cart",
+    "event_action": "checkout_start",
+    "event_payload": {
+      "product_id": 553,
+      "product_type": "Shoes"
+    },
+    "event_timestamp": "0001-01-01T00:00:00Z"
+  },
+  {
+    "event_id": "11ea72d9-e685-7f47-d6b6-f50eabb301aa",
+    "user_id": 347,
+    "user_ip": null,
+    "event_platform": "tablet",
+    "event_domain": "flo.com",
+    "event_source": "listing",
+    "event_action": "checkout_start",
+    "event_payload": {
+      "product_id": 553,
+      "product_type": "Shoes"
+    },
+    "event_timestamp": "0001-01-01T00:00:00Z"
+  },
+  {
+    "event_id": "890f2ae7-5314-3e4f-d33d-f6b649b8bf6d",
+    "user_id": 580,
+    "user_ip": null,
+    "event_platform": "web",
+    "event_domain": "flo.com",
+    "event_source": "detail",
+    "event_action": "checkout_start",
+    "event_payload": {
+      "product_id": 553,
+      "product_type": "Shoes"
+    },
+    "event_timestamp": "0001-01-01T00:00:00Z"
+  }
+]

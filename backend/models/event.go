@@ -16,3 +16,8 @@ type Event struct {
 	Payload   json.RawMessage `json:"event_payload"`
 	Timestamp time.Time       `json:"event_timestamp"`
 }
+/* araştırılacak
+func (e Event) process() {
+	e.UserID
+}
+*/

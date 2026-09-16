@@ -12,26 +12,29 @@ Assumption (unconfirmed): the demo becomes the foundation, not throwaway.
 
 # Current phase
 
-Go + Gin  →  MySQL. Step 5 done: `POST /event` works end to end (bind
-error handled, payload stored as real JSON, DB fills the timestamp, 201
-response). Dummy rows inserted and verified with `SELECT`. Friday
-deliverable done: synthetic dataset generator (`backend/tools/generate`,
-now with per-action `event_payload`) and request script
-(`backend/tools/send`) both built and run end to end — 20/20 events
+Step 6: the Laravel admin panel, in `admin/`. Go writes events, Laravel
+reads them — the panel is the read side. Phase A (scaffold + shell) is
+done; phase B (events list) is next. See "Panel phases" below.
+
+Steps 1–5 (Go + Gin → MySQL) are done: `POST /event` works end to end
+(bind error handled, payload stored as real JSON, DB fills the timestamp,
+201 response). Friday deliverable done: synthetic dataset generator
+(`backend/tools/generate`, with per-action `event_payload`) and request
+script (`backend/tools/send`) both built and run end to end — 20/20 events
 posted with `201`, confirmed with `SELECT COUNT(*) FROM events;`.
 
 # Mentor's curriculum (from raw notes below, ordered + current status)
 
 1. [x] **Event data model** — research fields and types. `event_id` (UUID,
-   always unique), `user_id`. This is a DB table structure; requests are
-   built from it, then inserted. Think about which fields are meaningful.
+       always unique), `user_id`. This is a DB table structure; requests are
+       built from it, then inserted. Think about which fields are meaningful.
    - Fixed by mentor: `event_platform` (app/web/tablet), `event_domain`
      (site data came from), `event_source` (listing/detail/cart/...).
    - Locked: 9 columns, `schema.sql` == `models/event.go` == INSERT in
      `controllers/event.go`. `event_location` dropped (geo lives in
      `event_payload`), `user_ip` added, `user_id` is nullable (`*int`).
 2. [x] **Go + Gin service**, latest version. POST, GET, pull params, print,
-   experiment. Docker later if it's in the way.
+       experiment. Docker later if it's in the way.
    - `/ping`, `/hello`, `POST /event` exist. Owe a "why Gin?" write-up.
 3. [x] **MySQL** — install, create table, dummy data, try `SELECT`.
    - `docker compose up -d db` (mysql:8.4), `schema.sql` loaded into
@@ -40,41 +43,94 @@ posted with `201`, confirmed with `SELECT COUNT(*) FROM events;`.
    - Dummy rows inserted via `POST /event` (real request path, not a
      manual `INSERT`), confirmed with `SELECT * FROM events;`.
 4. [x] **Go MySQL library** — chose `sqlx` + `go-sql-driver/mysql`
-   (+ `godotenv` for `.env`). Owe a "why sqlx?" write-up.
+       (+ `godotenv` for `.env`). Owe a "why sqlx?" write-up.
 5. [x] **Wire it together** — POST from Postman → Gin handler → INSERT.
-   Mentor's toy version is `customer(id, name, surname)`; we're doing it
-   straight on `events`.
+       Mentor's toy version is `customer(id, name, surname)`; we're doing it
+       straight on `events`.
    - `ShouldBindJSON` error now checked (400 + return), `event_payload`
      switched from `any` to `json.RawMessage` (matches MySQL `JSON`
      column without a marshal round-trip), `event_timestamp` dropped
      from the INSERT (DB `DEFAULT` fills it), `return` added after the
      500 case, 201 + `event_id` returned on success, debug `fmt.Println`
      removed.
-6. [ ] **PHP admin panel** — later phase, mentor has separate notes.
+6. [ ] **PHP admin panel** — Laravel, event tablosunu listeleme ve filtreleme
+       olucak. Ekstradan kullanıcı verilicek, admin panelden verilicek. Full
+       laravel yapıları kullanılıcak. Her şey panelden yöneltilicek db
+       bilgilerini .env verilicek.
+   - In progress. Broken into phases A–E below.
 
 If time left: `update` / `delete` / `get` endpoints, REST-ish paths
 `api/v1/customer/{create,get,update,remove}`, all POST.
 
+# Panel phases (step 6)
+
+Lives in `admin/`, sibling to `backend/`. Laravel 13.32, PHP 8.5,
+Tailwind v4 + Vite (both ship with Laravel 13 — only `npm install` added).
+Design follows the reference dashboard screenshot: white sidebar, blue
+active pill, white content card, Plus Jakarta Sans, pill badges.
+
+- [x] **A — scaffold + shell.** `composer create-project laravel/laravel
+      admin`, `admin/.env` pointed at `events_db`, `php artisan migrate`
+      (adds `users`/`sessions`/`cache`/`jobs`/`migrations` next to
+      `events`), `npm install`.
+      Built: `resources/css/app.css` (design tokens in `@theme`),
+      `components/layouts/app.blade.php` (page shell),
+      `components/partials/{sidebar,topbar}.blade.php`,
+      `components/{badge,card,button,stat-card,empty-state}.blade.php`,
+      `resources/js/app.js` (off-canvas sidebar under `lg`).
+      Verified at 430/900/1280px — no horizontal overflow, drawer opens,
+      focus ring visible.
+- [ ] **B — events list.** `app/Models/Event.php`, `EventController@index`,
+      route, and `views/events/index.blade.php`. The model has to be told
+      how to fit a table it did not generate: `$table`, `$primaryKey`,
+      `$incrementing = false`, `$keyType = 'string'`, `$timestamps = false`,
+      and casts (`event_payload` → array, `event_timestamp` → datetime).
+- [ ] **C — filters.** `event_platform` / `event_domain` / `event_source` /
+      `event_action` + a date range, using `when()` in the controller.
+      No filter class until it hurts.
+- [ ] **D — users from the panel.** CRUD on Laravel's own `users` table:
+      resource controller, `FormRequest` validation, `Route::resource`.
+- [ ] **E — login.** Gate the panel with `Auth::attempt()` + the `auth`
+      middleware. Deliberately NOT Breeze — it generates its own Blade and
+      Tailwind layouts that would fight the phase A design.
+
+**Do not write a migration for `events`.** Go owns that table and
+`db/schema.sql` is the single source of truth. Laravel only reads it.
+
 # Friday deliverable (mentor)
 
 - [x] Synthetic event dataset matching the locked model.
-  `backend/tools/generate` (`go run ./tools/generate`) writes
-  `backend/events.json` — random platform/domain/source/action per
-  event via `randomChoice`, `UserID`/`UserIP` randomly nil-or-set to
-  represent anonymous vs. logged-in events. `event_payload` now varies
-  per `event_action` via an `actionPayloads` map + `payloadFor()`
-  lookup — panics if an action is missing from the map (deliberate:
-  catch a drifted `actions`/`actionPayloads` pair at generation time,
-  not silently).
+      `backend/tools/generate` (`go run ./tools/generate`) writes
+      `backend/events.json` — random platform/domain/source/action per
+      event via `randomChoice`, `UserID`/`UserIP` randomly nil-or-set to
+      represent anonymous vs. logged-in events. `event_payload` now varies
+      per `event_action` via an `actionPayloads` map + `payloadFor()`
+      lookup — panics if an action is missing from the map (deliberate:
+      catch a drifted `actions`/`actionPayloads` pair at generation time,
+      not silently).
 - [x] Script that turns the dataset into `POST /event` requests.
-  `backend/tools/send` (`go run ./tools/send`) reads `events.json`,
-  POSTs each event to `http://127.0.0.1:8080/event`, prints
-  status/result per request plus a sent/failed summary. Verified: 20/20
-  `201`, `SELECT COUNT(*)` confirmed rows landed.
+      `backend/tools/send` (`go run ./tools/send`) reads `events.json`,
+      POSTs each event to `http://127.0.0.1:8080/event`, prints
+      status/result per request plus a sent/failed summary. Verified: 20/20
+      `201`, `SELECT COUNT(*)` confirmed rows landed.
 
 # Next (smallest steps, in order)
 
-1. `user_ip` from body vs. `c.ClientIP()` — still open, noted below too.
+1. Phase B: write `admin/app/Models/Event.php` — the six lines that map
+   Eloquent onto Go's `events` table.
+2. Phase B: write `EventController@index` (`paginate(25)`, newest first)
+   and the `/events` route.
+3. Phase B: replace `Route::view('/', 'dashboard')` with a controller that
+   fills the four stat cards.
+4. `user_ip` from body vs. `c.ClientIP()` — still open, noted below too.
+
+# How to run the panel
+
+```
+docker compose up -d db          # MySQL must be up
+cd admin && npm run dev          # Vite, leave running
+cd admin && php artisan serve    # http://127.0.0.1:8000
+```
 
 # Done / I can explain this
 
@@ -95,6 +151,11 @@ If time left: `update` / `delete` / `get` endpoints, REST-ish paths
 - Does the demo `events` schema carry into the full project, or is a
   rethink expected later?
 - `event_action`: kept as its own column (not a payload key). Agree?
+- Panel reads MySQL directly with Eloquent. In the real project, should it
+  go through the Go API instead so Go stays the only thing touching the
+  events table?
+- Laravel's `users` table now lives in `events_db` alongside `events`.
+  Same database, or should the panel get its own?
 
 # Demo shortcuts (already true in the code — revisit later)
 
@@ -107,6 +168,17 @@ If time left: `update` / `delete` / `get` endpoints, REST-ish paths
 - `user_ip` currently comes from the request body, not `c.ClientIP()`.
 - Gin logs "You trusted all proxies" — no trusted-proxy list set.
 - `schema.sql` loaded manually, not via a compose `initdb` mount.
+- `.env` now exists three times: repo root, `backend/`, and `admin/`.
+- The panel connects to MySQL as `root` with the same password the
+  container uses. A real deployment needs a read-only panel user.
+- No login until phase E — the whole panel is open to anyone who can
+  reach it.
+- `admin/resources/views/components/partials/topbar.blade.php` hardcodes
+  the signed-in name/email; swap for `auth()->user()` in phase E.
+- Sidebar "Log out" is a plain `GET /logout` link; it must become a POST
+  form with a CSRF token in phase E.
+- `Route::view('/', 'dashboard')` renders the shell with no data behind
+  it; the stat cards show `—` until phase B.
 
 ---
 

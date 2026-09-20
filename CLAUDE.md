@@ -2,13 +2,19 @@
 
 Event tracker/manager. Internship project at FLO Group.
 
+**Read `docs/PLAN.md` before doing anything.** This file holds the rules;
+`docs/PLAN.md` holds the state — what is done, what is next, and why.
+
 Stack (mentor's build order, do NOT jump ahead):
 
-1. Go + Gin ← current
-2. MySQL
-3. Admin panel (PHP)
-4. Event data ingestion + Redis
-5. (later, maybe) swap Redis for Kafka
+- [x] Go + Gin
+- [x] MySQL
+- [ ] Admin panel (PHP / Laravel) ← current
+- [ ] Event data ingestion + Redis
+- [ ] (later, maybe) swap Redis for Kafka
+
+`docs/PLAN.md` numbers things by the mentor's own 1–6 curriculum, which is
+finer-grained than this list. That file wins on status.
 
 ## Who I am
 
@@ -56,7 +62,7 @@ encouragement.
 
 ## Git
 
-- NEVER run git commands. Commits are mine.
+- Try to not run git commands until i ask. Commits are mine, until otherwise.
 - I'm new to git and bad at commit hygiene. Help me with:
   - When to commit: if a change is getting too big to explain in one
     sentence, say so and tell me to commit what works.
@@ -65,7 +71,6 @@ encouragement.
   - Git mechanics: I will ask things like "how do I undo the last
     commit" or "what does staging mean". Explain, don't run it.
 - Commit messages: I write the first draft, always. Then you critique it.
-  Say what's vague or missing. Do NOT write the message for me, even if
-  I ask — tell me what's wrong with mine instead.
-  - Repo is mine, solo, commit to main. No branches, no PRs.
+  Say what's vague or missing. Do NOT write the message for me, until i ask — tell me what's wrong with mine instead.
+  - Repo is mine, solo, commit to main. No branches, no PRs, until i ask.
   - Push after every commit. The remote history is my work record.

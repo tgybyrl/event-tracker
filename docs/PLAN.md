@@ -16,6 +16,9 @@ Step 6: the Laravel admin panel, in `admin/`. Go writes events, Laravel
 reads them — the panel is the read side. Phase A (scaffold + shell) is
 done; phase B (events list) is next. See "Panel phases" below.
 
+Working on branch `panel-phase-a`, not `main`. First branch in this repo —
+`main` is back at `0df5658` (pre-panel).
+
 Steps 1–5 (Go + Gin → MySQL) are done: `POST /event` works end to end
 (bind error handled, payload stored as real JSON, DB fills the timestamp,
 201 response). Friday deliverable done: synthetic dataset generator
@@ -70,7 +73,7 @@ Design follows the reference dashboard screenshot: white sidebar, blue
 active pill, white content card, Plus Jakarta Sans, pill badges.
 
 - [x] **A — scaffold + shell.** `composer create-project laravel/laravel
-      admin`, `admin/.env` pointed at `events_db`, `php artisan migrate`
+    admin`, `admin/.env` pointed at `events_db`, `php artisan migrate`
       (adds `users`/`sessions`/`cache`/`jobs`/`migrations` next to
       `events`), `npm install`.
       Built: `resources/css/app.css` (design tokens in `@theme`),
@@ -230,4 +233,10 @@ api/v1/customer/update
 api/v1/customer/remove
 api/v1/customer/create
 http method post
+
+
+
+debug delve araştır
+uvicorn
+hotreload
 ```

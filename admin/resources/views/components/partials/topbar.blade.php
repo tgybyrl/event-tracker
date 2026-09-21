@@ -12,19 +12,9 @@
              stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
     </button>
 
-    <form action="/events" method="GET" class="min-w-0 flex-1 sm:max-w-md">
-        <label for="search" class="sr-only">Search events</label>
-        <div class="relative">
-            <svg viewBox="0 0 24 24"
-                 class="pointer-events-none absolute start-4 top-1/2 size-[18px] -translate-y-1/2 text-muted"
-                 fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true">
-                <circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/>
-            </svg>
-            <input id="search" name="q" type="search" value="{{ request('q') }}"
-                   placeholder="Search by event or user ID"
-                   class="w-full rounded-full border border-hairline bg-canvas py-2.5 ps-11 pe-4 text-[15px] placeholder:text-muted focus:border-brand focus:bg-surface focus:outline-none">
-        </div>
-    </form>
+    {{-- Free-text search was dropped: nothing read ?q=, and the events table is
+         better narrowed by its known columns. Phase C puts a Filter control on
+         the events page instead. --}}
 
     <button type="button"
             class="relative ms-auto hidden rounded-full p-2.5 text-muted hover:bg-canvas hover:text-ink sm:block">

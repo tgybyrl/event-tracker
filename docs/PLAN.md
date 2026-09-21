@@ -17,8 +17,9 @@ reads them — the panel is the read side. Phases A (scaffold + shell) and
 B (events list) are done; phase C (filters) is next. See "Panel phases"
 below.
 
-Working on branch `panel-phase-b`, not `main`. `main` is back at `0df5658`
-(pre-panel); `panel-phase-a` holds the shell.
+Branch per phase, merged into `main` when the phase closes. Phase A landed
+on `main` at `ed74a61`; phase B follows from `panel-phase-b`. Each merge is
+a fast-forward, since a phase branch only ever moves ahead of `main`.
 
 Steps 1–5 (Go + Gin → MySQL) are done: `POST /event` works end to end
 (bind error handled, payload stored as real JSON, DB fills the timestamp,

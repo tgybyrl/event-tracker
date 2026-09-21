@@ -83,3 +83,31 @@ What I chose and why: two copies — `./.env` for compose, `backend/.env`
   for the app — kept in sync by hand. Simplest to explain; no symlink
   concept, no code change.
 What I'd do differently: TODO
+
+## 2026-09-21 — Panel access model: screen-based, and phases D/E swapped
+
+Problem: the panel is for a company's staff, not just me. There is a manager
+  account that grants workers either general access or access "specific" to
+  something. PLAN.md's phases D and E were written before this was known —
+  D was plain CRUD on `users`, E was a single `Auth::attempt()` login, and
+  neither had any notion of a role.
+What I tried: TODO
+What I chose and why: two things.
+  (1) Access is **screen-based**, not row-based: a role controls what you can
+  do, not which events you can see. So `users` gets a `role` column
+  (`manager` / `worker`) and nothing else — no join table, no per-row
+  scoping, no change to `events`. The alternative was row-level access tied
+  to `event_domain`. Rejected for now because it is strictly more work and
+  nothing has asked for it; it is also additive later (a join table plus one
+  `where`), so choosing wrong here is cheap. Provisional until the mentor
+  confirms — logged under "Open questions for mentor".
+  (2) Login moves ahead of user management (old E becomes D). Phase E's user
+  CRUD is itself a screen only a manager may open, so the Gate that protects
+  it needs auth to already exist. Built the other way round, the screen gets
+  written open and gated afterwards — the same work twice.
+  Authorization goes through Laravel's built-in `Gate`/`Policy`, not
+  `spatie/laravel-permission`. Two roles do not justify a dependency, and
+  the mentor's note says "full laravel yapıları kullanılıcak".
+  The first manager comes from a seeder: you cannot create the first manager
+  through a screen that only a manager may open.
+What I'd do differently: TODO

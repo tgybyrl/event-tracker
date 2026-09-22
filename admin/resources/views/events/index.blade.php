@@ -16,6 +16,35 @@
 
     $th = 'px-4 py-3 text-start text-xs font-bold uppercase tracking-wide text-muted whitespace-nowrap';
     $td = 'px-4 py-3 align-top text-sm whitespace-nowrap';
+
+    $fieldLabel = 'mb-1.5 block text-xs font-bold uppercase tracking-wide text-muted';
+    $field = 'w-full rounded-xl border border-hairline bg-surface px-3 py-2.5 text-sm font-semibold text-ink';
+
+    // The four column filters, in toolbar order. Each one's <option> list
+    // comes from $options, which the controller reads out of the table.
+    $columnFilters = [
+        'platform' => 'Platform',
+        'domain' => 'Domain',
+        'source' => 'Source',
+        'action' => 'Action',
+    ];
+
+    // Is the list narrowed right now? Drives three things: the panel starts
+    // open, the Clear button appears, and an empty result says "no matches"
+    // instead of "no events yet". per_page is excluded — 50 rows a page is
+    // not a filter.
+    $isFiltered = array_filter([
+        $filters['platform'],
+        $filters['domain'],
+        $filters['source'],
+        $filters['action'],
+        $filters['from'],
+        $filters['to'],
+    ]) !== [];
+
+    // A rejected query string redirects back here, so the panel has to be
+    // open for the message to be read.
+    $panelOpen = $isFiltered || $errors->any();
 @endphp
 
 <x-layouts.app title="Events">
@@ -24,13 +53,99 @@
     </x-slot:actions>
 
     <x-card>
+        {{-- Hidden only when the table is genuinely empty: filter controls
+             that can never match anything are just noise. --}}
+        @if ($events->isNotEmpty() || $isFiltered)
+            {{-- One GET form for both rows, so the page size and the filters
+                 submit together and land in the query string the controller
+                 validates. --}}
+            <form method="GET" action="{{ route('events.index') }}">
+                <div class="flex flex-wrap items-center gap-3 border-b border-hairline px-4 py-3">
+                    <label class="flex items-center gap-2 text-[13px] text-muted">
+                        Showing
+                        {{-- Applies on change; the listener in app.js submits the form. --}}
+                        <select id="per-page" name="per_page"
+                                class="rounded-xl border border-hairline bg-surface px-2.5 py-1.5 text-sm font-bold text-ink">
+                            @foreach ([25, 50, 100] as $size)
+                                <option value="{{ $size }}" @selected($filters['per_page'] == $size)>{{ $size }}</option>
+                            @endforeach
+                        </select>
+                        per page
+                    </label>
+
+                    <x-button id="filter-toggle" class="ms-auto" aria-controls="filter-panel"
+                              aria-expanded="{{ $panelOpen ? 'true' : 'false' }}">
+                        <svg viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor"
+                             stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M4 5h16l-6 7v5l-4 2v-7z"/>
+                        </svg>
+                        Filter
+                    </x-button>
+                </div>
+
+                <div id="filter-panel" @unless ($panelOpen) hidden @endunless
+                     class="border-b border-hairline px-4 py-4">
+                    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                        @foreach ($columnFilters as $name => $label)
+                            <div>
+                                <label for="filter-{{ $name }}" class="{{ $fieldLabel }}">{{ $label }}</label>
+                                <select id="filter-{{ $name }}" name="{{ $name }}" class="{{ $field }}">
+                                    <option value="">All {{ Str::lower($label) }}s</option>
+                                    @foreach ($options[$name] as $value)
+                                        <option value="{{ $value }}" @selected($filters[$name] === $value)>{{ $value }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        @endforeach
+
+                        <div>
+                            <label for="filter-from" class="{{ $fieldLabel }}">From</label>
+                            <input type="date" id="filter-from" name="from" value="{{ $filters['from'] }}"
+                                   class="{{ $field }}">
+                        </div>
+
+                        <div>
+                            <label for="filter-to" class="{{ $fieldLabel }}">To</label>
+                            <input type="date" id="filter-to" name="to" value="{{ $filters['to'] }}"
+                                   class="{{ $field }}">
+                        </div>
+                    </div>
+
+                    @if ($errors->any())
+                        <ul class="mt-3 space-y-1 text-sm font-semibold text-tag-rose-ink">
+                            @foreach ($errors->all() as $message)
+                                <li>{{ $message }}</li>
+                            @endforeach
+                        </ul>
+                    @endif
+
+                    <div class="mt-4 flex flex-wrap items-center gap-2.5">
+                        <x-button type="submit" variant="primary">Apply filters</x-button>
+
+                        @if ($isFiltered)
+                            <x-button :href="route('events.index')">Clear</x-button>
+                        @endif
+                    </div>
+                </div>
+            </form>
+        @endif
+
         @if ($events->isEmpty())
-            <x-empty-state title="No events yet"
-                           body="The table is empty. Start the Go service and run the send script to POST the generated dataset.">
-                <x-slot:action>
-                    <x-badge tone="slate">go run ./tools/send</x-badge>
-                </x-slot:action>
-            </x-empty-state>
+            @if ($isFiltered)
+                <x-empty-state title="No events match these filters"
+                               body="Nothing in the table satisfies every filter at once. Widen one of them, or clear them all.">
+                    <x-slot:action>
+                        <x-button :href="route('events.index')">Clear filters</x-button>
+                    </x-slot:action>
+                </x-empty-state>
+            @else
+                <x-empty-state title="No events yet"
+                               body="The table is empty. Start the Go service and run the send script to POST the generated dataset.">
+                    <x-slot:action>
+                        <x-badge tone="slate">go run ./tools/send</x-badge>
+                    </x-slot:action>
+                </x-empty-state>
+            @endif
         @else
             {{-- The table scrolls inside the card so the page body never does. --}}
             <div class="overflow-x-auto">

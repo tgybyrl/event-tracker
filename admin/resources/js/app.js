@@ -22,3 +22,18 @@ backdrop?.addEventListener('click', () => setSidebar(false));
 document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') setSidebar(false);
 });
+
+// Events toolbar. The page-size select applies on change — a lone select with
+// no submit next to it reads as broken — while the filter fields wait for
+// Apply, because changing four of them should be one request, not four.
+document.getElementById('per-page')?.addEventListener('change', (event) => {
+    event.target.form.requestSubmit();
+});
+
+const filterToggle = document.getElementById('filter-toggle');
+const filterPanel = document.getElementById('filter-panel');
+
+filterToggle?.addEventListener('click', () => {
+    filterPanel.hidden = !filterPanel.hidden;
+    filterToggle.setAttribute('aria-expanded', String(!filterPanel.hidden));
+});

@@ -13,9 +13,10 @@ Assumption (unconfirmed): the demo becomes the foundation, not throwaway.
 # Current phase
 
 Step 6: the Laravel admin panel, in `admin/`. Go writes events, Laravel
-reads them — the panel is the read side. Phases A (scaffold + shell) and
-B (events list) are done; phase C (filters) is next. See "Panel phases"
-below.
+reads them — the panel is the read side. Phases A (scaffold + shell),
+B (events list) and C (filters) are done; phase D (login + roles) is next,
+and it is blocked on one mentor answer — see "Open questions". See "Panel
+phases" below.
 
 Branch per phase, merged into `main` when the phase closes. Phase A landed
 on `main` at `ed74a61`; phase B follows from `panel-phase-b`. Each merge is
@@ -104,14 +105,45 @@ active pill, white content card, Plus Jakarta Sans, pill badges.
       Also removed the topbar's free-text search — nothing read `?q=`, so it
       was a control that did nothing. The events table is better narrowed by
       its known columns, which is phase C.
-- [ ] **C — filters.** `event_platform` / `event_domain` / `event_source` /
-      `event_action` + a date range, using `when()` in the controller.
-      No filter class until it hurts.
-      UI target (mentor-style reference screenshot, 2026-09-21): a toolbar
-      on the events card reading `Showing [25 ▾] per page` on the left and a
-      `▽ Filter` button on the right. `<x-button>` already matches the
-      reference's shape — reuse it, don't restyle. Reference also had an
-      Export button; deliberately skipped, nothing asks for CSV yet.
+- [x] **C — filters.** Four column filters (`event_platform` /
+      `event_domain` / `event_source` / `event_action`) plus a `from`/`to`
+      date range, all read from the query string. No filter class — one
+      `when()` call per column in `EventController@index`, which emits no
+      `WHERE` at all for an unset filter. Date bounds use `whereDate` so `to`
+      includes the whole day instead of cutting at midnight.
+      `$request->validate()` runs first: `per_page` is allowlisted to
+      25/50/100 (without it `?per_page=999999` pulls the whole table into one
+      page), `to` is `after_or_equal:from`, and the four string filters are
+      capped at their `schema.sql` column widths. The filters themselves carry
+      no injection risk — Eloquent binds them as parameters. `validate()`
+      returns only keys that were present in the URL, so `$filters += [...]`
+      fills the rest and the view never needs `isset()`.
+      Dropdown options come from `SELECT DISTINCT` on the table, not a
+      hardcoded list mirroring `tools/generate/main.go`: a new action Go
+      starts sending appears in the filter with no PHP change. Cost logged
+      under Demo shortcuts.
+      UI matches the reference screenshot: a toolbar reading
+      `Showing [25 ▾] per page` on the left, a `▽ Filter` button on the right,
+      and a field panel below it. The panel is a `<div hidden>` toggled from
+      `app.js`, **not** `<details>` — `<summary>` must be the first child of
+      `<details>`, which would drag the per-page select into the toggle row
+      and make clicking the select open and close the panel. Panel starts open
+      when any filter is set or validation failed, so a filtered URL and an
+      error both show their own state.
+      Page size applies on `change` (a lone select with no submit beside it
+      reads as broken); the filter fields wait for Apply, because changing
+      four of them should be one request, not four.
+      Empty state splits in two: "No events match these filters" + Clear,
+      versus phase B's "No events yet". Without the split, filtering to zero
+      rows tells you to go run `tools/send` against a table that already has
+      43 rows.
+      Reference also had an Export button; deliberately skipped, nothing asks
+      for CSV yet.
+      Verified: `?platform=web` → 14 rows, `?platform=web&action=add_to_cart`
+      → 3, both matching `SELECT COUNT(*)`; `?per_page=999` bounces back with
+      the message in the panel; `?from=2027-01-01` hits the filtered empty
+      state. Date range can only be demoed as "all" or "nothing" until the
+      generator writes spread-out timestamps — all 43 rows share one.
 - [ ] **D — login + roles.** *(Was phase E. Swapped on 2026-09-21: phase E's
       user management is itself a screen only a manager may open, so auth has
       to exist before it, or it gets built open and gated afterwards — twice
@@ -167,14 +199,18 @@ Phase C should be written without it either way.
 
 # Next (smallest steps, in order)
 
-1. Phase C: add the `Showing [n] per page` + `Filter` toolbar to
-   `views/events/index.blade.php`, matching the reference screenshot.
-2. Phase C: read the filter values in `EventController@index` with
-   `when()`, one call per column. Keep `->withQueryString()`.
+1. Ask the mentor the "specific access" question before starting phase D —
+   the answer decides whether `users` needs only a `role` column or a join
+   table as well. It is the last item under "Open questions for mentor".
+2. Phase D: `role` column migration on `users`, seeder for the first
+   manager, `Auth::attempt()` + `auth` middleware, then the Gate.
 3. Still unticked from phase B's original list, deliberately deferred:
    replace `Route::view('/', 'dashboard')` with a controller that fills the
    four stat cards.
 4. `user_ip` from body vs. `c.ClientIP()` — still open, noted below too.
+5. Make `tools/generate` spread `event_timestamp` over a range of days.
+   Not cosmetic: the date filter shipped in phase C cannot be demonstrated
+   to the mentor while every row shares one timestamp.
 
 # How to run the panel
 
@@ -208,6 +244,10 @@ cd admin && php artisan serve    # http://127.0.0.1:8000
   events table?
 - Laravel's `users` table now lives in `events_db` alongside `events`.
   Same database, or should the panel get its own?
+- The panel filters on `event_platform` / `event_domain` / `event_source` /
+  `event_action` and none of them is indexed. Should `events` get indexes on
+  those columns? It is an `ALTER TABLE` on Go's table, so it is your call,
+  not the panel's.
 - The panel is for a company's own staff: a manager account that grants
   access to worker accounts. When a manager gives a worker "specific"
   rather than general access — specific to what? Assumed screen-based
@@ -241,6 +281,15 @@ cd admin && php artisan serve    # http://127.0.0.1:8000
 - The panel's Eloquent model can write to `events` even though nothing
   does — no `$fillable`, but nothing stops `Event::query()->update(...)`.
   Go is meant to be the only writer; a read-only DB user would enforce it.
+- The events list runs four `SELECT DISTINCT` queries per page load to fill
+  the filter dropdowns — five queries total where phase B had one. Fine at
+  43 rows; at scale these want caching or a lookup table.
+- No index on any filtered column. Every filter is a full table scan, and so
+  is every `DISTINCT`. Adding one means an `ALTER TABLE` on `events`, which
+  Go owns — mentor question, not a panel change.
+- `event_timestamp` is identical across all 43 seeded rows, so the date
+  filter is untestable beyond "all" and "nothing" until `tools/generate`
+  spreads timestamps out.
 
 ---
 

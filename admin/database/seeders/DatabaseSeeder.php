@@ -12,14 +12,32 @@ class DatabaseSeeder extends Seeder
 
     /**
      * Seed the application's database.
+     *
+     * The first manager has to come from here: you cannot create it through a
+     * screen that only a manager may open. The worker exists so the 403 path
+     * can be demonstrated without hand-editing the database.
      */
     public function run(): void
     {
-        // User::factory(10)->create();
+        // updateOrCreate keys on the email, so running this twice leaves two
+        // rows rather than four.
+        User::updateOrCreate(
+            ['email' => 'manager@example.com'],
+            [
+                'name' => 'Panel Manager',
+                // The 'hashed' cast in User::casts() hashes this on save.
+                'password' => 'password',
+                'role' => 'manager',
+            ],
+        );
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+        User::updateOrCreate(
+            ['email' => 'worker@example.com'],
+            [
+                'name' => 'Panel Worker',
+                'password' => 'password',
+                'role' => 'worker',
+            ],
+        );
     }
 }

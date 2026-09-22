@@ -1,6 +1,9 @@
 @php
     // Each item: label, href, the URL patterns that light it up, and its icon
-    // paths (drawn inline so the panel needs no icon package).
+    // paths (drawn inline so the panel needs no icon package). An optional
+    // 'can' key hides the item from anyone the Gate turns down — a link that
+    // always 403s is a broken control, not a security feature. The Gate on the
+    // route is what actually protects the screen.
     $nav = [
         [
             'label' => 'Dashboard',
@@ -18,6 +21,7 @@
             'label' => 'Users',
             'href' => '/users',
             'active' => ['users', 'users/*'],
+            'can' => 'manage-users',
             'icon' => '<path d="M15.5 20v-1.5a3.5 3.5 0 0 0-3.5-3.5H7a3.5 3.5 0 0 0-3.5 3.5V20"/><circle cx="9.5" cy="8" r="3.5"/><path d="M20.5 20v-1.5a3.5 3.5 0 0 0-2.7-3.4"/><path d="M15.5 4.7a3.5 3.5 0 0 1 0 6.6"/>',
         ],
         [
@@ -50,6 +54,8 @@
 
     <nav class="flex-1 space-y-1 overflow-y-auto px-4 py-2" aria-label="Main">
         @foreach ($nav as $item)
+            @continue (isset($item['can']) && ! auth()->user()->can($item['can']))
+
             @php $isActive = request()->is($item['active']); @endphp
             <a href="{{ $item['href'] }}"
                @if ($isActive) aria-current="page" @endif
@@ -63,14 +69,19 @@
     </nav>
 
     <div class="shrink-0 border-t border-hairline p-4">
-        {{-- TODO(phase E): POST to a logout route once auth exists. --}}
-        <a href="/logout"
-           class="flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-[15px] font-semibold text-muted transition-colors hover:bg-canvas hover:text-ink">
-            <svg viewBox="0 0 24 24" class="size-5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.75"
-                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M9.5 21H5.5A2.5 2.5 0 0 1 3 18.5v-13A2.5 2.5 0 0 1 5.5 3h4"/><path d="m16 16.5 4.5-4.5L16 7.5"/><path d="M20.5 12H9.5"/>
-            </svg>
-            Log out
-        </a>
+        {{-- A form, not a link: GET /logout could be fired by any <img> tag on
+             a page the user happens to visit. Same classes as a nav item, so
+             it still looks like one. --}}
+        <form method="POST" action="{{ route('logout') }}">
+            @csrf
+            <button type="submit"
+                    class="flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-[15px] font-semibold text-muted transition-colors hover:bg-canvas hover:text-ink">
+                <svg viewBox="0 0 24 24" class="size-5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.75"
+                     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M9.5 21H5.5A2.5 2.5 0 0 1 3 18.5v-13A2.5 2.5 0 0 1 5.5 3h4"/><path d="m16 16.5 4.5-4.5L16 7.5"/><path d="M20.5 12H9.5"/>
+                </svg>
+                Log out
+            </button>
+        </form>
     </div>
 </aside>

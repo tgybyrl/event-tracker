@@ -1,7 +1,6 @@
 @php
-    // TODO(phase E): replace with auth()->user() once login exists.
-    $user = ['name' => 'Tugay Bakırlı', 'email' => 'tgybyrl48@gmail.com'];
-    $initials = collect(explode(' ', $user['name']))->take(2)->map(fn ($p) => mb_substr($p, 0, 1))->implode('');
+    $user = auth()->user();
+    $initials = collect(explode(' ', $user->name))->take(2)->map(fn ($p) => mb_substr($p, 0, 1))->implode('');
 @endphp
 
 <header class="sticky top-0 z-30 flex h-[72px] shrink-0 items-center gap-3 border-b border-hairline bg-surface px-5 sm:px-8">
@@ -30,8 +29,8 @@
             {{ $initials }}
         </span>
         <span class="hidden text-start leading-tight md:block">
-            <span class="block text-sm font-bold">{{ $user['name'] }}</span>
-            <span class="block text-xs text-muted">{{ $user['email'] }}</span>
+            <span class="block text-sm font-bold">{{ $user->name }}</span>
+            <span class="block text-xs text-muted">{{ $user->email }}</span>
         </span>
         <svg viewBox="0 0 24 24" class="size-4 shrink-0 text-muted" fill="none" stroke="currentColor"
              stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">

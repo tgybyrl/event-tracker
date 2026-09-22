@@ -365,9 +365,11 @@ removed on 2026-09-22 for exactly that reason.
    shipped on the provisional screen-based answer. If it turns out to be
    row-level, the addition is a join table plus one `where`, not a rewrite.
    It is the last item under "Open questions for mentor".
-2. Write the two owed answers in `DECISIONS.md`: "why Gin" and "why sqlx".
-   Both entries exist but every field in them still reads `TODO`, and the
-   mentor asked the Gin one directly in his own notes.
+2. Write the two owed answers into `DECISIONS.md`: "why Gin" and "why sqlx".
+   **Both were answered to the mentor out loud on 2026-09-22, but neither is
+   written down** — every field in both entries still reads `TODO`. The
+   answer exists; the record does not, which is the same as not having it in
+   a month.
 3. Give `event_timestamp` a real spread. **Do this before the dashboard.**
    Not cosmetic, and not only a demo fix: the column currently records when
    the row was *inserted*, which is a different fact from when the event
@@ -385,7 +387,8 @@ removed on 2026-09-22 for exactly that reason.
    four stat cards. Deferred since phase B, and **blocked on item 3** — build
    it before the timestamp spread and three of the four cards read 0 forever.
    Card list and queries are under the same section as item 4.
-6. `user_ip` from body vs. `c.ClientIP()` — still open, noted below too.
+*(`user_ip` from body vs. `c.ClientIP()` was item 6 and is now decided — keep
+the body value. Reasoning moved to Demo shortcuts.)*
 
 # How to run the panel
 
@@ -445,7 +448,21 @@ Log in with `manager@example.com` / `password` (sees Users) or
 - `db/seed.sql` is throwaway scratch, not aligned with `schema.sql`.
 - `.env` exists twice: repo root (for `docker compose`) and `backend/`
   (for `godotenv/autoload`). Kept in sync by hand.
-- `user_ip` currently comes from the request body, not `c.ClientIP()`.
+- `user_ip` comes from the request body, not `c.ClientIP()`. **Decided on
+  2026-09-22 to keep it that way** — this is no longer an open question.
+  Everything posts from localhost, so `c.ClientIP()` would stamp the same
+  address on every row. Worse than boring: `c.ClientIP()` can never return
+  nothing, so the nullable `user_ip` column would never actually hold NULL
+  and the anonymous-vs-known distinction the generator produces would
+  disappear from the data entirely. The column's nullability would become
+  untestable.
+  The cost, worth being able to say out loud: a body-supplied IP is whatever
+  the client claims. In production the trustworthy source is the connection,
+  not the payload — but note that `c.ClientIP()` is only trustworthy once the
+  trusted-proxy list Gin is already warning about is actually configured, so
+  even then it is not free. Real trackers do legitimately receive a
+  third-party IP in the body (server-to-server SDKs, batched mobile sends),
+  so the field itself is not the mistake; trusting it blindly would be.
 - Gin logs "You trusted all proxies" — no trusted-proxy list set.
 - `schema.sql` loaded manually, not via a compose `initdb` mount.
 - `.env` now exists three times: repo root, `backend/`, and `admin/`.

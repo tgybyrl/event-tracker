@@ -12,19 +12,27 @@ Assumption (unconfirmed): the demo becomes the foundation, not throwaway.
 
 # Current phase
 
-Step 6: the Laravel admin panel, in `admin/`. Go writes events, Laravel
-reads them — the panel is the read side. Phases A (scaffold + shell),
-B (events list), C (filters) and D (login + roles) are done; phase E
-(user management) is next. See "Panel phases" below.
+Step 6 — the Laravel admin panel — is **done**. Phases A (scaffold + shell),
+B (events list), C (filters), D (login + roles) and E (user management) all
+closed; phase E landed on `main` at `eb64e74` on 2026-09-22. See "Panel
+phases" below.
 
-Phase D was built on the *provisional* screen-based access model — the
-mentor has still not answered the "specific access" question. If the answer
-turns out to be row-level, phase D's work stands and a join table plus one
+That was the last item in the mentor's 1–6 curriculum. The next thing in the
+build order is **event data ingestion + Redis** — a new stack layer, not more
+panel. Nothing is scoped for it yet.
+
+Phases D and E were both built on the *provisional* screen-based access model
+— the mentor has still not answered the "specific access" question. If the
+answer turns out to be row-level, that work stands and a join table plus one
 `where` is added on top.
 
 Branch per phase, merged into `main` when the phase closes. Phase A landed
 on `main` at `4d53479`; phase B follows from `panel-phase-b`. Each merge is
 a fast-forward, since a phase branch only ever moves ahead of `main`.
+Phase E broke the habit once — the work was committed straight onto a
+`panel-phase-e` branch created *after* the code was already written, rather
+than before it. Same result, but the branch was not protecting anything
+while the work happened.
 
 Steps 1–5 (Go + Gin → MySQL) are done: `POST /event` works end to end
 (bind error handled, payload stored as real JSON, DB fills the timestamp,
@@ -63,11 +71,15 @@ posted with `201`, confirmed with `SELECT COUNT(*) FROM events;`.
      from the INSERT (DB `DEFAULT` fills it), `return` added after the
      500 case, 201 + `event_id` returned on success, debug `fmt.Println`
      removed.
-6. [ ] **PHP admin panel** — Laravel, event tablosunu listeleme ve filtreleme
+6. [x] **PHP admin panel** — Laravel, event tablosunu listeleme ve filtreleme
        olucak. Ekstradan kullanıcı verilicek, admin panelden verilicek. Full
        laravel yapıları kullanılıcak. Her şey panelden yöneltilicek db
        bilgilerini .env verilicek.
-   - In progress. Broken into phases A–E below.
+   - Done. Phases A–E below. Every clause of the note is covered: listing
+     and filtering (B, C), users given from the panel (E), `.env` holds the
+     DB credentials (A). "Full laravel yapıları" is the reason auth uses
+     Gates and `Auth::attempt` rather than a package, and why phase E uses
+     `Route::resource` + FormRequests rather than hand-rolled routes.
 
 If time left: `update` / `delete` / `get` endpoints, REST-ish paths
 `api/v1/customer/{create,get,update,remove}`, all POST.
@@ -204,14 +216,49 @@ active pill, white content card, Plus Jakarta Sans, pill badges.
       is a 302 to `/login` and `/events` bounces again afterwards; phase C
       still returns 43 / 14 / 3 rows for no filter / `?platform=web` /
       `?platform=web&action=add_to_cart`, matching `COUNT(*)`.
-- [ ] **E — users from the panel.** *(Was phase D.)* CRUD on `users`:
-      resource controller, `FormRequest` validation, `Route::resource`,
-      behind the manager Gate from phase D. Replaces the `/users` stub
-      (`Route::view` → `Route::resource`, `views/users/index.blade.php`
-      becomes a real list). The `role` field needs an `in:manager,worker`
-      rule — nothing validates it yet, because nothing writes it yet.
-      A manager must not be able to demote or delete their own account, or
-      the panel can be locked out of itself.
+- [x] **E — users from the panel.** *(Was phase D.)* CRUD on `users`, behind
+      the `manage-users` Gate. One `Route::resource(...)->except('show')`
+      replaces the phase D `Route::view` stub and makes six routes with the
+      conventional names; the Gate sits on the resource, so the *writes* are
+      protected, not just the screens — verified with a worker session
+      getting 403 on `POST /users` and `DELETE /users/{id}` directly, not
+      only on the pages. `show` is excluded: a read-only page for four
+      fields the list already prints is a screen with nothing on it.
+      Validation moved into `StoreUserRequest` / `UpdateUserRequest` rather
+      than an inline `validate()` like `EventController`, because the rules
+      differ between create and update. Two differences are not cosmetic:
+      the update's email rule is
+      `Rule::unique('users','email')->ignore($this->route('user'))` —
+      without the ignore, saving the form without touching the email fails
+      against the row's own address — and its `password` is `nullable`, with
+      the controller dropping the key when blank, or the `hashed` cast would
+      store a hash of the empty string. Each request's `authorize()` re-checks
+      the Gate, so the rules cannot be reached by a route that forgot the
+      middleware.
+      `User::ROLES` holds the two valid roles. The column is a bare
+      `VARCHAR(20)` with no constraint behind it, so that constant is the only
+      thing rejecting `role=owner`; both FormRequests and both `<select>`s
+      read it, so the rule and the dropdown cannot drift.
+      Two guards live in `UserController`, not the FormRequests, because they
+      depend on *which row* is being changed rather than on the values sent:
+      a manager may not demote or delete themselves. Together they also mean
+      the panel can never reach zero managers — you can only ever delete
+      someone else, so the last manager standing is whoever is holding the
+      keyboard. The edit form disables the role select for your own row and
+      resends the value in a hidden field, but that is cosmetic; the
+      controller check is the protection, and it was tested by hand-crafting
+      the `PUT` that the disabled select was supposed to prevent.
+      Also added, and deliberately committed separately because neither is
+      specific to users: flash messages in `layouts/app.blade.php` (a write
+      redirects to a different page than the form, so the banner has to live
+      where the redirect lands — `status` for a completed write, `error` for
+      a refused one) and a `danger` variant on `x-button`.
+      Verified: worker 403 on all four user routes including the two writes;
+      duplicate email + `role=owner` + a 6-character password all three come
+      back on the form; blank password leaves the hash byte-identical while a
+      filled one changes it and logs in with the new value; hand-crafted
+      self-demote `PUT` refused with the row unchanged; self-delete refused;
+      phase C still returns 43 / 14 / 3 rows.
 
 **Access model — screen-based, provisional.** Decided 2026-09-21, to be
 confirmed with the mentor. A worker's access controls *what they can do*,
@@ -245,20 +292,32 @@ Phase C should be written without it either way.
 
 # Next (smallest steps, in order)
 
-1. Still ask the mentor the "specific access" question — phase D shipped on
-   the provisional screen-based answer. If it turns out to be row-level, the
-   addition is a join table plus one `where`, not a rewrite. It is the last
-   item under "Open questions for mentor".
-2. Phase E: `Route::resource` on `users`, a resource controller and
-   `FormRequest`s, behind the `manage-users` Gate that phase D built.
-3. Still unticked from phase B's original list, deliberately deferred:
-   replace `Route::view('/', 'dashboard')` with a controller that fills the
-   four stat cards.
-4. `user_ip` from body vs. `c.ClientIP()` — still open, noted below too.
-5. Give `event_timestamp` a real spread. Not cosmetic: the date filter
-   shipped in phase C cannot be demonstrated to the mentor while the table
-   holds two days and nothing at all in the last week. Needs a change in Go,
-   not just the generator — see the Demo shortcuts entry for why.
+1. Still ask the mentor the "specific access" question — phases D and E both
+   shipped on the provisional screen-based answer. If it turns out to be
+   row-level, the addition is a join table plus one `where`, not a rewrite.
+   It is the last item under "Open questions for mentor".
+2. Write the two owed answers in `DECISIONS.md`: "why Gin" and "why sqlx".
+   Both entries exist but every field in them still reads `TODO`, and the
+   mentor asked the Gin one directly in his own notes.
+3. Give `event_timestamp` a real spread. **Do this before the dashboard.**
+   Not cosmetic, and not only a demo fix: the column currently records when
+   the row was *inserted*, which is a different fact from when the event
+   *happened*, and conflating the two is a data-model bug — the one area
+   this file says is not a shortcut zone. It also blocks two things at once:
+   phase C's date filter can only be demoed as "all" or "nothing" while the
+   table holds two days and nothing at all in the last week, and an "events
+   today" stat card would read 0. Needs a change in Go, not just the
+   generator — see the Demo shortcuts entry for why.
+4. Replace `Route::view('/', 'dashboard')` with a controller that fills the
+   four stat cards. Deferred since phase B. Do it *after* item 3, or the
+   cards get built against a table where half the answers are always 0.
+5. `user_ip` from body vs. `c.ClientIP()` — still open, noted below too.
+6. Decide what `/settings` is. The sidebar has linked to it since phase A and
+   it is not a route, so it 404s today. Either put something behind it or
+   take the item out — same "control that does nothing" problem as the
+   topbar search (dropped in phase B) and the bell and chevron (dropped
+   2026-09-22), except this one visibly breaks rather than quietly sitting
+   there.
 
 # How to run the panel
 
@@ -336,11 +395,16 @@ Log in with `manager@example.com` / `password` (sees Users) or
 - No password reset, no email verification, no "remember me". The
   `password_reset_tokens` table exists (Laravel created it) and nothing
   uses it. A forgotten password means re-running the seeder.
-- `/users` is a stub screen. It exists so the `manage-users` Gate protects
-  a real route; phase E fills it in.
-- Nothing validates the `role` value yet — the column accepts any string up
-  to 20 chars. Only the seeder writes it today; phase E's `FormRequest`
-  adds `in:manager,worker`.
+- A deleted panel account is gone, not deactivated — no soft deletes. Fine
+  while `users` is four rows that nothing else references; `events.user_id`
+  is the *tracked end user*, a different population entirely, so deleting a
+  panel account orphans nothing.
+- Nothing constrains `role` at the database level. `User::ROLES` and the
+  FormRequests reject anything but `manager`/`worker` on the way in, but a
+  hand-written `UPDATE users SET role='owner'` in MySQL would stick, and
+  `isManager()` would then quietly answer false for it. A CHECK constraint
+  or an ENUM column would close that; two values did not seem worth a
+  migration yet.
 - `throttle:5,1` on `POST /login` keys on IP. Behind a proxy every request
   would look like one IP; same family of problem as Gin's untrusted-proxy
   warning above.
@@ -357,7 +421,10 @@ Log in with `manager@example.com` / `password` (sees Users) or
   generic message makes enumeration *harder*, not impossible.
 - `Route::view('/', 'dashboard')` renders the shell with no data behind
   it; the four stat cards still show `—`. `/events` reads the database,
-  the dashboard does not.
+  the dashboard does not. It is the only screen left in the panel that
+  shows nothing real.
+- The `Settings` item in the sidebar points at `/settings`, which has never
+  been a route — clicking it 404s. It has been there since phase A.
 - The panel's Eloquent model can write to `events` even though nothing
   does — no `$fillable`, but nothing stops `Event::query()->update(...)`.
   Go is meant to be the only writer; a read-only DB user would enforce it.

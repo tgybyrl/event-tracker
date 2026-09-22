@@ -19,7 +19,7 @@ and it is blocked on one mentor answer — see "Open questions". See "Panel
 phases" below.
 
 Branch per phase, merged into `main` when the phase closes. Phase A landed
-on `main` at `ed74a61`; phase B follows from `panel-phase-b`. Each merge is
+on `main` at `4d53479`; phase B follows from `panel-phase-b`. Each merge is
 a fast-forward, since a phase branch only ever moves ahead of `main`.
 
 Steps 1–5 (Go + Gin → MySQL) are done: `POST /event` works end to end

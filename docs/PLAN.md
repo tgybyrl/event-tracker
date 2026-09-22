@@ -96,9 +96,10 @@ active pill, white content card, Plus Jakarta Sans, pill badges.
       `$keyType = 'string'`, `$timestamps = false`, and casts
       (`event_payload` → array, `event_timestamp` → datetime).
       `EventController@index` orders by `event_timestamp DESC, event_id ASC`
-      — the second key is required, not cosmetic: all 43 seeded rows share
-      one timestamp, and without a tie-break MySQL can repeat a row across
-      pages. `->withQueryString()` is already on the paginator so phase C
+      — the second key is required, not cosmetic: rows arrive in batches and
+      land on the same timestamp (the largest group is 20 of the 43 rows at
+      `2026-09-15 09:12:57`), and MySQL gives no stable order for ties, so
+      without a tie-break a row can show up on page 1 and again on page 2. `->withQueryString()` is already on the paginator so phase C
       filters survive a page change.
       `views/events/index.blade.php` reuses phase A components only, with
       value→badge-tone maps in a `@php` block, payload in a native
@@ -254,9 +255,10 @@ Phase C should be written without it either way.
    replace `Route::view('/', 'dashboard')` with a controller that fills the
    four stat cards.
 4. `user_ip` from body vs. `c.ClientIP()` — still open, noted below too.
-5. Make `tools/generate` spread `event_timestamp` over a range of days.
-   Not cosmetic: the date filter shipped in phase C cannot be demonstrated
-   to the mentor while every row shares one timestamp.
+5. Give `event_timestamp` a real spread. Not cosmetic: the date filter
+   shipped in phase C cannot be demonstrated to the mentor while the table
+   holds two days and nothing at all in the last week. Needs a change in Go,
+   not just the generator — see the Demo shortcuts entry for why.
 
 # How to run the panel
 
@@ -322,9 +324,15 @@ Log in with `manager@example.com` / `password` (sees Users) or
 - `.env` now exists three times: repo root, `backend/`, and `admin/`.
 - The panel connects to MySQL as `root` with the same password the
   container uses. A real deployment needs a read-only panel user.
-- Seeded panel accounts use the hardcoded password `password`. Fine for a
-  demo on localhost; a real deployment needs the first manager created with
-  a password that was never written down in the repo.
+- Seeded panel accounts use the hardcoded password `password`, written
+  literally in `DatabaseSeeder.php` and repeated in "How to run the panel"
+  above. **The repo is public**, so the admin login is published alongside
+  the code. Harmless while the panel only answers on `127.0.0.1` — nobody
+  else can reach it — but it stops being harmless the moment this is
+  deployed anywhere with a URL, because the credentials arrive with it.
+  Fix when that day comes: read it from an env var with no default, so the
+  repo records *that* a password exists, not what it is:
+  `env('SEED_MANAGER_PASSWORD') ?? throw new RuntimeException(...)`.
 - No password reset, no email verification, no "remember me". The
   `password_reset_tokens` table exists (Laravel created it) and nothing
   uses it. A forgotten password means re-running the seeder.
@@ -336,6 +344,17 @@ Log in with `manager@example.com` / `password` (sees Users) or
 - `throttle:5,1` on `POST /login` keys on IP. Behind a proxy every request
   would look like one IP; same family of problem as Gin's untrusted-proxy
   warning above.
+- Login timing leaks whether an email has an account. The generic "These
+  credentials do not match our records" blocks the obvious enumeration, but
+  `Auth::attempt` only runs bcrypt when the user is found, so a real account
+  answers slower. Measured on 2026-09-22, three samples each:
+  `worker@example.com` 0.319 / 0.309 / 0.310 s versus `nobody@example.com`
+  0.230 / 0.235 / 0.234 s — a consistent ~80 ms gap, well outside noise.
+  Laravel's default behaviour, not something the panel introduced, and
+  `throttle:5,1` caps how fast a list could be walked. Left as is.
+  The fix, if it ever matters, is to hash a dummy password when no user is
+  found so both paths cost the same. Worth being able to say out loud: the
+  generic message makes enumeration *harder*, not impossible.
 - `Route::view('/', 'dashboard')` renders the shell with no data behind
   it; the four stat cards still show `—`. `/events` reads the database,
   the dashboard does not.
@@ -348,9 +367,24 @@ Log in with `manager@example.com` / `password` (sees Users) or
 - No index on any filtered column. Every filter is a full table scan, and so
   is every `DISTINCT`. Adding one means an `ALTER TABLE` on `events`, which
   Go owns — mentor question, not a panel change.
-- `event_timestamp` is identical across all 43 seeded rows, so the date
-  filter is untestable beyond "all" and "nothing" until `tools/generate`
-  spreads timestamps out.
+- `event_timestamp` records when the row was **inserted**, not when the
+  event happened. `db/schema.sql:10` declares it
+  `TIMESTAMP DEFAULT CURRENT_TIMESTAMP` and the INSERT in
+  `controllers/event.go` omits the column, so MySQL fills it at write time.
+  `tools/generate` never invents a timestamp at all — the field exists on
+  the struct (`models/event.go:17`) and is bound from JSON, it is just not
+  in the INSERT.
+  Consequence: every row carries the clock time of a `tools/send` run, so
+  the 43 rows sit on two days (checked 2026-09-22 — 3 rows on `2026-09-09`,
+  40 on `2026-09-15`, 5 distinct timestamps in total, **nothing in the last
+  week**). The date filter is therefore only demoable as "all" or "nothing",
+  and any dashboard card counting "events today" would read 0.
+  Fix is small and arguably more correct than what is there now: have
+  `CreateEvent` insert `event_timestamp` when the body carries one and fall
+  back to the DB default when it does not, then have `tools/generate` spread
+  events across the last couple of weeks. A real tracker does receive events
+  that happened before they arrived — offline queues, mobile batching — so
+  accepting the field is not just a demo convenience.
 
 ---
 

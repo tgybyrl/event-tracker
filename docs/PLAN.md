@@ -273,6 +273,75 @@ Phase C should be written without it either way.
 **Do not write a migration for `events`.** Go owns that table and
 `db/schema.sql` is the single source of truth. Laravel only reads it.
 
+# Panel: the two screens still showing nothing (scoped 2026-09-22)
+
+Neither is in the mentor's notes. They exist because the reference dashboard
+screenshot had them and phase A built the shell. Scoped here so they get
+built deliberately rather than filled with whatever the screenshot had.
+
+## Dashboard (`/`)
+
+Blocked on the `event_timestamp` spread — see Next item 3. Three of the four
+cards read from that column, and every row currently carries the clock time
+of a `tools/send` run, so "events today" would print 0 and stay 0. Build the
+timestamp fix first, then this.
+
+Replace `Route::view('/', 'dashboard')` with a `DashboardController@index`.
+Four cards:
+
+| Card | Query | Why it earns the space |
+| --- | --- | --- |
+| Events today | `WHERE DATE(event_timestamp) = CURDATE()` | Answers "is the pipeline alive" |
+| Events this week | last 7 days | Context — today's number means nothing without the usual |
+| Anonymous share | `user_id IS NULL` over `COUNT(*)`, as a % | Data-quality signal: a jump means login tracking broke on the client |
+| Last event received | `MAX(event_timestamp)`, shown as "4 minutes ago" | The only card that is **buildable today** |
+
+That last card is worth understanding rather than copying. `event_timestamp`
+holding insert-time is *wrong* for "events today" but exactly *right* for
+"when did we last receive anything" — so it is correct before the timestamp
+fix and stays correct after it. It is also the most useful card on the
+screen: if it reads "3 days ago" something is broken, and no other card says
+so.
+
+Below the cards, replace the `<x-empty-state>` with one
+`GROUP BY event_action` count list. One query, reuses `<x-badge>`, shows what
+people actually do. **No chart library** — that would be a dependency added
+for a demo, and the rule is no new dependencies without a reason.
+
+Cost: about five queries on a table with no indexes. Fine at 43 rows, already
+logged under Demo shortcuts, and worth saying out loud rather than hiding.
+
+## Settings (`/settings`)
+
+Not blocked. Buildable now.
+
+The sidebar has linked here since phase A and it 404s. The thing worth
+putting behind it is **your own account**: change your own name and password,
+nothing else.
+
+The justification is a real gap phase E left, not a desire to fill a nav
+item: **a worker cannot change their own password.** Managers can edit
+themselves at `/users/{id}/edit`; workers cannot reach `/users` at all, so
+today a forgotten worker password means re-running the seeder. That is
+already in the Demo shortcuts list.
+
+Three rules fall straight out of phase E and none of them is optional:
+
+- It edits `auth()->id()` only — **never** an id taken from the URL, or this
+  is `/users` again with the Gate removed.
+- **No role field.** Editing your own role is precisely what phase E forbids,
+  and this screen has no Gate in front of it.
+- Require the current password before setting a new one. Laravel ships a
+  `current_password` rule, so nothing new to install. Without it, a borrowed
+  unlocked laptop turns into a permanent account takeover.
+
+No Gate on the route: every logged-in user gets their own account screen. The
+sidebar item therefore needs no `can` key, unlike Users.
+
+Deliberately **not** going here: theme toggles, notification preferences, app
+configuration. None has a consumer. Building them recreates the bell that was
+removed on 2026-09-22 for exactly that reason.
+
 # Friday deliverable (mentor)
 
 - [x] Synthetic event dataset matching the locked model.
@@ -308,16 +377,15 @@ Phase C should be written without it either way.
    table holds two days and nothing at all in the last week, and an "events
    today" stat card would read 0. Needs a change in Go, not just the
    generator — see the Demo shortcuts entry for why.
-4. Replace `Route::view('/', 'dashboard')` with a controller that fills the
-   four stat cards. Deferred since phase B. Do it *after* item 3, or the
-   cards get built against a table where half the answers are always 0.
-5. `user_ip` from body vs. `c.ClientIP()` — still open, noted below too.
-6. Decide what `/settings` is. The sidebar has linked to it since phase A and
-   it is not a route, so it 404s today. Either put something behind it or
-   take the item out — same "control that does nothing" problem as the
-   topbar search (dropped in phase B) and the bell and chevron (dropped
-   2026-09-22), except this one visibly breaks rather than quietly sitting
-   there.
+4. `/settings` → your own account (name + password). **Not blocked by
+   anything — this is the one panel screen buildable right now.** Fixes a
+   real gap: a worker currently has no way to change their own password.
+   Fully scoped under "Panel: the two screens still showing nothing".
+5. Replace `Route::view('/', 'dashboard')` with a controller that fills the
+   four stat cards. Deferred since phase B, and **blocked on item 3** — build
+   it before the timestamp spread and three of the four cards read 0 forever.
+   Card list and queries are under the same section as item 4.
+6. `user_ip` from body vs. `c.ClientIP()` — still open, noted below too.
 
 # How to run the panel
 
@@ -424,7 +492,8 @@ Log in with `manager@example.com` / `password` (sees Users) or
   the dashboard does not. It is the only screen left in the panel that
   shows nothing real.
 - The `Settings` item in the sidebar points at `/settings`, which has never
-  been a route — clicking it 404s. It has been there since phase A.
+  been a route — clicking it 404s. It has been there since phase A. Scoped
+  now under "Panel: the two screens still showing nothing".
 - The panel's Eloquent model can write to `events` even though nothing
   does — no `$fillable`, but nothing stops `Event::query()->update(...)`.
   Go is meant to be the only writer; a read-only DB user would enforce it.

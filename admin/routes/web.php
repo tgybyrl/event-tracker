@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\EventController;
+use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
 // 'guest' bounces an already-logged-in user away from the login form.
@@ -28,9 +29,10 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/events', [EventController::class, 'index'])->name('events.index');
 
-    // Phase D stub. Phase E replaces this with a Route::resource behind the
-    // same Gate.
-    Route::view('/users', 'users.index')
-        ->middleware('can:manage-users')
-        ->name('users.index');
+    // One line for six routes: index/create/store/edit/update/destroy, all
+    // behind the same Gate. `show` is excluded — a read-only page for four
+    // fields the list already prints would be a screen with nothing on it.
+    Route::resource('users', UserController::class)
+        ->except('show')
+        ->middleware('can:manage-users');
 });

@@ -18,6 +18,16 @@ class User extends Authenticatable
     use HasFactory, Notifiable;
 
     /**
+     * Every role the panel knows about.
+     *
+     * The column is a VARCHAR(20) with no constraint behind it, so this list is
+     * what actually limits the values: the FormRequests validate against it and
+     * both user forms build their <select> from it. Add a role here and the
+     * rule and the dropdown both follow.
+     */
+    public const ROLES = ['manager', 'worker'];
+
+    /**
      * Whether this user may reach the manager-only screens.
      *
      * Written once here so the string 'manager' does not get repeated in the

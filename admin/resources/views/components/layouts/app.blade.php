@@ -31,6 +31,21 @@
                     @endisset
                 </header>
 
+                {{-- Flash messages live in the layout, not in one screen: a
+                     redirect after a write lands on a different page than the
+                     form, so the banner has to exist wherever it lands. --}}
+                @if (session('status'))
+                    <div class="mb-5 rounded-xl bg-tag-green px-4 py-3 text-sm font-bold text-tag-green-ink">
+                        {{ session('status') }}
+                    </div>
+                @endif
+
+                @if (session('error'))
+                    <div class="mb-5 rounded-xl bg-tag-rose px-4 py-3 text-sm font-bold text-tag-rose-ink">
+                        {{ session('error') }}
+                    </div>
+                @endif
+
                 {{ $slot }}
             </main>
         </div>

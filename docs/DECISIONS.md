@@ -111,3 +111,44 @@ What I chose and why: two things.
   The first manager comes from a seeder: you cannot create the first manager
   through a screen that only a manager may open.
 What I'd do differently: TODO
+
+## 2026-09-22 — Phase D: hand-rolled auth instead of Breeze
+
+Problem: the panel needed login and two roles. Laravel ships a starter kit
+  (Breeze) that generates exactly this in one command.
+What I tried: TODO
+What I chose and why: wrote it by hand — an `AuthController` with
+  `create`/`store`/`destroy`, the built-in `auth`/`guest` middleware, and one
+  `Gate::define('manage-users', ...)` in `AppServiceProvider`. Breeze was
+  rejected because it generates its own Blade layouts and Tailwind config,
+  which would have fought the phase A design; I would have spent longer
+  deleting its views than writing three controller methods. Nothing here is
+  custom auth — `Auth::attempt`, the session guard and the Gate are all
+  Laravel's own; only the views are mine.
+  Four smaller calls inside it, each worth being able to defend:
+  (1) `session()->regenerate()` after a successful attempt — session
+  fixation. An id planted before login would otherwise still be valid after.
+  (2) One generic failure message for "no such email" and "wrong password".
+  Distinguishing them confirms which addresses have accounts.
+  (3) Logout is `POST` with a CSRF token, not the `GET` link phase A left
+  behind: a `GET /logout` can be triggered by an `<img src>` on any page.
+  (4) `throttle:5,1` on `POST /login` — one middleware string; without it the
+  form is an unlimited password oracle.
+What I'd do differently: TODO
+
+## 2026-09-22 — `role` is a plain string column, not a PHP enum
+
+Problem: `users.role` holds `manager` or `worker`. Laravel can cast a column
+  to a backed enum, which would stop typos at the boundary.
+What I tried: TODO
+What I chose and why: plain `VARCHAR(20)`, defaulting to `'worker'`, with a
+  single `User::isManager()` helper. Two values did not justify introducing
+  a new concept to a codebase that has not needed one yet, and the one place
+  the literal `'manager'` appears is that helper — the Gate, the sidebar and
+  phase E all go through it. The default is `worker` rather than `manager`
+  so that forgetting to set a role grants the *least* access.
+  The gap this leaves: nothing rejects `role = 'banana'` today. Acceptable
+  only because the seeder is currently the one thing that writes the column;
+  phase E's `FormRequest` adds `in:manager,worker`. If a third role ever
+  appears, that is the moment the enum earns its place.
+What I'd do differently: TODO

@@ -14,9 +14,13 @@ Assumption (unconfirmed): the demo becomes the foundation, not throwaway.
 
 Step 6: the Laravel admin panel, in `admin/`. Go writes events, Laravel
 reads them — the panel is the read side. Phases A (scaffold + shell),
-B (events list) and C (filters) are done; phase D (login + roles) is next,
-and it is blocked on one mentor answer — see "Open questions". See "Panel
-phases" below.
+B (events list), C (filters) and D (login + roles) are done; phase E
+(user management) is next. See "Panel phases" below.
+
+Phase D was built on the *provisional* screen-based access model — the
+mentor has still not answered the "specific access" question. If the answer
+turns out to be row-level, phase D's work stands and a join table plus one
+`where` is added on top.
 
 Branch per phase, merged into `main` when the phase closes. Phase A landed
 on `main` at `4d53479`; phase B follows from `panel-phase-b`. Each merge is
@@ -144,28 +148,69 @@ active pill, white content card, Plus Jakarta Sans, pill badges.
       the message in the panel; `?from=2027-01-01` hits the filtered empty
       state. Date range can only be demoed as "all" or "nothing" until the
       generator writes spread-out timestamps — all 43 rows share one.
-- [ ] **D — login + roles.** *(Was phase E. Swapped on 2026-09-21: phase E's
+- [x] **D — login + roles.** *(Was phase E. Swapped on 2026-09-21: phase E's
       user management is itself a screen only a manager may open, so auth has
       to exist before it, or it gets built open and gated afterwards — twice
       the work. Nothing was built under the old letters, so nothing to rename
       in the history.)*
-      `Auth::attempt()` + the `auth` middleware, plus a `role` column added to
-      `users` by migration. Writing that migration is allowed — `users` is
-      Laravel's own table. `events` is still off limits.
-      Roles: `manager` and `worker`. Authorization goes through Laravel's
-      built-in `Gate`/`Policy`, not a package: two roles do not justify
-      `spatie/laravel-permission`, and "full laravel yapıları kullanılıcak"
-      is exactly what Gates are.
-      The first manager comes from a seeder, not the panel — you cannot
-      create the first manager through a screen only a manager may open.
+      `add_role_to_users_table` adds `role VARCHAR(20) DEFAULT 'worker'`.
+      Writing that migration is allowed — `users` is Laravel's own table;
+      `events` is still off limits. The default is `worker` on purpose:
+      forgetting to set a role gives the *least* access, not the most.
+      `User::isManager()` holds the one comparison against `'manager'`, so
+      the string is not repeated across the Gate, the sidebar and phase E.
+      Plain string, not a PHP enum — two values did not earn a new concept.
+      `DatabaseSeeder` creates `manager@example.com` and `worker@example.com`
+      with `updateOrCreate`, so re-seeding leaves two rows, not four. The
+      first manager has to come from a seeder: you cannot create it through a
+      screen only a manager may open. The worker exists so the 403 path can be
+      demonstrated without hand-editing the database.
+      `AuthController` is `create`/`store`/`destroy`. Three things in it are
+      not cosmetic: `session()->regenerate()` after a successful attempt
+      (session fixation — an id planted before login would otherwise still be
+      valid after it); one generic "These credentials do not match our
+      records" for both a missing email and a wrong password (telling them
+      apart confirms which emails have accounts); and `throttle:5,1` on
+      `POST /login`, without which the form is an open password oracle.
+      `redirect()->intended('/')` sends you back to the page `auth` bounced
+      you off — verified: `/events?platform=web` survives the login.
+      Authorization is Laravel's built-in `Gate`, defined in
+      `AppServiceProvider::boot()` (Laravel 11+ dropped `AuthServiceProvider`),
+      not `spatie/laravel-permission`: two roles do not justify a dependency,
+      and "full laravel yapıları kullanılıcak" is exactly what Gates are. One
+      `manage-users` definition feeds three consumers — `can:manage-users` on
+      the route, the sidebar's `@continue`, and phase E's controller.
+      `/users` is a stub screen so the Gate protects something real and can be
+      shown working; phase E swaps the `Route::view` for a `Route::resource`.
       Deliberately NOT Breeze — it generates its own Blade and Tailwind
-      layouts that would fight the phase A design.
-      Also due here, both listed under Demo shortcuts: `auth()->user()` in
-      `partials/topbar.blade.php`, and the sidebar's `GET /logout` link
-      becoming a POST form with a CSRF token.
+      layouts that would fight the phase A design. The login page instead gets
+      `layouts/auth.blade.php`, a second layout rather than a variant of
+      `layouts/app`: that one is a sidebar plus a topbar, and neither means
+      anything to someone who is not logged in yet.
+      The sidebar hides the Users item behind the same Gate — a link that
+      always 403s is a broken control, not a security feature; the route's
+      Gate is the actual protection. Both shortcuts owed from phase A are
+      paid off here: the topbar reads `auth()->user()`, and `GET /logout`
+      is now a POST form with `@csrf` (a GET logout can be fired by any
+      `<img>` tag on a page the user happens to visit).
+      Verified: logged out, `/`, `/events` and `/users` all 302 to `/login`;
+      wrong password re-renders with the generic message and the email still
+      filled in (`old('email')`), password never; 6th attempt in a minute is
+      `429`; worker gets 200/200/**403** on `/`,`/events`,`/users` with no
+      Users link, manager gets 200 everywhere with the link; the pre-login
+      row in `sessions` is gone after login and the new one carries
+      `user_id=1`; `GET /logout` is 405, POST without a token is 419, with one
+      is a 302 to `/login` and `/events` bounces again afterwards; phase C
+      still returns 43 / 14 / 3 rows for no filter / `?platform=web` /
+      `?platform=web&action=add_to_cart`, matching `COUNT(*)`.
 - [ ] **E — users from the panel.** *(Was phase D.)* CRUD on `users`:
       resource controller, `FormRequest` validation, `Route::resource`,
-      behind the manager Gate from phase D.
+      behind the manager Gate from phase D. Replaces the `/users` stub
+      (`Route::view` → `Route::resource`, `views/users/index.blade.php`
+      becomes a real list). The `role` field needs an `in:manager,worker`
+      rule — nothing validates it yet, because nothing writes it yet.
+      A manager must not be able to demote or delete their own account, or
+      the panel can be locked out of itself.
 
 **Access model — screen-based, provisional.** Decided 2026-09-21, to be
 confirmed with the mentor. A worker's access controls *what they can do*,
@@ -199,11 +244,12 @@ Phase C should be written without it either way.
 
 # Next (smallest steps, in order)
 
-1. Ask the mentor the "specific access" question before starting phase D —
-   the answer decides whether `users` needs only a `role` column or a join
-   table as well. It is the last item under "Open questions for mentor".
-2. Phase D: `role` column migration on `users`, seeder for the first
-   manager, `Auth::attempt()` + `auth` middleware, then the Gate.
+1. Still ask the mentor the "specific access" question — phase D shipped on
+   the provisional screen-based answer. If it turns out to be row-level, the
+   addition is a join table plus one `where`, not a rewrite. It is the last
+   item under "Open questions for mentor".
+2. Phase E: `Route::resource` on `users`, a resource controller and
+   `FormRequest`s, behind the `manage-users` Gate that phase D built.
 3. Still unticked from phase B's original list, deliberately deferred:
    replace `Route::view('/', 'dashboard')` with a controller that fills the
    four stat cards.
@@ -216,9 +262,14 @@ Phase C should be written without it either way.
 
 ```
 docker compose up -d db          # MySQL must be up
+cd admin && php artisan migrate  # once, after pulling phase D
+cd admin && php artisan db:seed  # once — creates the manager and worker
 cd admin && npm run dev          # Vite, leave running
 cd admin && php artisan serve    # http://127.0.0.1:8000
 ```
+
+Log in with `manager@example.com` / `password` (sees Users) or
+`worker@example.com` / `password` (403 on `/users`).
 
 # Done / I can explain this
 
@@ -251,9 +302,11 @@ cd admin && php artisan serve    # http://127.0.0.1:8000
 - The panel is for a company's own staff: a manager account that grants
   access to worker accounts. When a manager gives a worker "specific"
   rather than general access — specific to what? Assumed screen-based
-  (what you can do) and building on that. The other reading is row-level
-  (a worker sees only certain `event_domain` values), which needs a join
-  table and changes phase D's schema. Confirm before phase D starts.
+  (what you can do) and shipped phase D on that. The other reading is
+  row-level (a worker sees only certain `event_domain` values), which needs
+  a join table and one extra `where` on the events query. Still unanswered;
+  if it is row-level, phase D's `role` column and Gate stay as they are and
+  the join table is added on top.
 
 # Demo shortcuts (already true in the code — revisit later)
 
@@ -269,12 +322,20 @@ cd admin && php artisan serve    # http://127.0.0.1:8000
 - `.env` now exists three times: repo root, `backend/`, and `admin/`.
 - The panel connects to MySQL as `root` with the same password the
   container uses. A real deployment needs a read-only panel user.
-- No login until phase D — the whole panel is open to anyone who can
-  reach it.
-- `admin/resources/views/components/partials/topbar.blade.php` hardcodes
-  the signed-in name/email; swap for `auth()->user()` in phase D.
-- Sidebar "Log out" is a plain `GET /logout` link; it must become a POST
-  form with a CSRF token in phase D.
+- Seeded panel accounts use the hardcoded password `password`. Fine for a
+  demo on localhost; a real deployment needs the first manager created with
+  a password that was never written down in the repo.
+- No password reset, no email verification, no "remember me". The
+  `password_reset_tokens` table exists (Laravel created it) and nothing
+  uses it. A forgotten password means re-running the seeder.
+- `/users` is a stub screen. It exists so the `manage-users` Gate protects
+  a real route; phase E fills it in.
+- Nothing validates the `role` value yet — the column accepts any string up
+  to 20 chars. Only the seeder writes it today; phase E's `FormRequest`
+  adds `in:manager,worker`.
+- `throttle:5,1` on `POST /login` keys on IP. Behind a proxy every request
+  would look like one IP; same family of problem as Gin's untrusted-proxy
+  warning above.
 - `Route::view('/', 'dashboard')` renders the shell with no data behind
   it; the four stat cards still show `—`. `/events` reads the database,
   the dashboard does not.

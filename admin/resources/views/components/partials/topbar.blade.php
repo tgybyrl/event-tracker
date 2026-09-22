@@ -15,16 +15,16 @@
          better narrowed by its known columns. Phase C puts a Filter control on
          the events page instead. --}}
 
-    <button type="button"
-            class="relative ms-auto hidden rounded-full p-2.5 text-muted hover:bg-canvas hover:text-ink sm:block">
-        <span class="sr-only">Notifications</span>
-        <svg viewBox="0 0 24 24" class="size-5" fill="none" stroke="currentColor" stroke-width="1.75"
-             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M18 8.5a6 6 0 1 0-12 0c0 6-2.5 8-2.5 8h17S18 14.5 18 8.5"/><path d="M13.7 20.5a2 2 0 0 1-3.4 0"/>
-        </svg>
-    </button>
+    {{-- The notifications bell was dropped for the same reason: nothing
+         produces notifications, so it was a button that could never do
+         anything. It also carried the ms-auto that pushed this bar's contents
+         right, which is why the chip below owns that class now. --}}
 
-    <button type="button" class="flex shrink-0 items-center gap-2.5 rounded-full p-1 hover:bg-canvas ms-auto sm:ms-0">
+    {{-- A label, not a control. It was a <button> with a chevron, which
+         promised a dropdown that never existed — same reason the free-text
+         search left this bar in phase B. If a profile menu is ever built, this
+         goes back to being a <button>. --}}
+    <div class="ms-auto flex shrink-0 items-center gap-2.5 rounded-full p-1">
         <span class="grid size-9 shrink-0 place-items-center rounded-full bg-brand-tint text-[13px] font-bold text-brand-ink">
             {{ $initials }}
         </span>
@@ -32,9 +32,5 @@
             <span class="block text-sm font-bold">{{ $user->name }}</span>
             <span class="block text-xs text-muted">{{ $user->email }}</span>
         </span>
-        <svg viewBox="0 0 24 24" class="size-4 shrink-0 text-muted" fill="none" stroke="currentColor"
-             stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="m6 9 6 6 6-6"/>
-        </svg>
-    </button>
+    </div>
 </header>

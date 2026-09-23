@@ -1,17 +1,12 @@
 @php
     // Value -> badge tone. One hue per value so a column can be scanned by
     // colour alone. Anything unmapped falls back to slate inside <x-badge>,
-    // so a new platform or action from Go shows up grey rather than breaking.
+    // so a new platform from Go shows up grey rather than breaking. Action
+    // tones live in <x-action-badge>, because the dashboard shows them too.
     $platformTones = [
         'web' => 'blue',
         'app' => 'green',
         'tablet' => 'violet',
-    ];
-
-    $actionTones = [
-        'product_click' => 'blue',
-        'add_to_cart' => 'amber',
-        'checkout_start' => 'green',
     ];
 
     $th = 'px-4 py-3 text-start text-xs font-bold uppercase tracking-wide text-muted whitespace-nowrap';
@@ -180,9 +175,7 @@
                                 <td class="{{ $td }}">{{ $event->event_source }}</td>
 
                                 <td class="{{ $td }}">
-                                    <x-badge :tone="$actionTones[$event->event_action] ?? 'slate'">
-                                        {{ $event->event_action }}
-                                    </x-badge>
+                                    <x-action-badge :action="$event->event_action" />
                                 </td>
 
                                 <td class="{{ $td }}">

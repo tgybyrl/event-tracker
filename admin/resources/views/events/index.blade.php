@@ -142,7 +142,7 @@
                 <x-empty-state title="No events yet"
                                body="The table is empty. Start the Go service and run the send script to POST the generated dataset.">
                     <x-slot:action>
-                        <x-badge tone="slate">go run ./tools/send</x-badge>
+                        <x-badge tone="slate">go run ./cmd/send</x-badge>
                     </x-slot:action>
                 </x-empty-state>
             @endif

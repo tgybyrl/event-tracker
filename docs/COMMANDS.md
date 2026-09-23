@@ -10,7 +10,7 @@ Projede çalıştırdığımız komutlar. Yeni komut kullandıkça buraya eklene
 
 ```
 docker compose up -d db          # 1. MySQL
-cd backend && go run .           # 2. Go servisi   → :8080
+cd backend && go run ./cmd/api   # 2. Go servisi   → :8080
 cd admin && php artisan serve    # 3. Laravel      → :8000
 ```
 
@@ -89,9 +89,9 @@ SELECT DISTINCT event_action FROM events;
 ## Go
 
 ```
-cd backend && go run .
+cd backend && go run ./cmd/api
 ```
-`backend/` içindeki `package main`'i derleyip çalıştırır. Servisi `:8080`'de ayağa kaldırır. `.env`'i çalışma dizininden okuduğu için **`backend/` içinden** çalıştırmak zorunlu.
+`backend/cmd/api/` içindeki `package main`'i derleyip çalıştırır. Servisi `:8080`'de ayağa kaldırır. `.env`'i çalışma dizininden okuduğu için **`backend/` içinden** çalıştırmak zorunlu.
 
 ```
 go build ./...
@@ -116,12 +116,12 @@ go mod tidy
 ### Veri üretme ve gönderme
 
 ```
-cd backend && go run ./tools/generate
+cd backend && go run ./cmd/generate
 ```
 20 sentetik event üretip `backend/events.json`'a yazar. Dosya varsa üzerine yazar.
 
 ```
-cd backend && go run ./tools/send
+cd backend && go run ./cmd/send
 ```
 `events.json`'ı okur, her event'i `POST :8080/event`'e gönderir. Her istek için status basar, sonunda gönderilen/başarısız özeti verir. **Go servisi ayakta olmalı.**
 

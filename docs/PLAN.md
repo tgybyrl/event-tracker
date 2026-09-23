@@ -37,8 +37,8 @@ while the work happened.
 Steps 1–5 (Go + Gin → MySQL) are done: `POST /event` works end to end
 (bind error handled, payload stored as real JSON, DB fills the timestamp,
 201 response). Friday deliverable done: synthetic dataset generator
-(`backend/tools/generate`, with per-action `event_payload`) and request
-script (`backend/tools/send`) both built and run end to end — 20/20 events
+(`backend/cmd/generate`, with per-action `event_payload`) and request
+script (`backend/cmd/send`) both built and run end to end — 20/20 events
 posted with `201`, confirmed with `SELECT COUNT(*) FROM events;`.
 
 # Mentor's curriculum (from raw notes below, ordered + current status)
@@ -136,7 +136,7 @@ active pill, white content card, Plus Jakarta Sans, pill badges.
       returns only keys that were present in the URL, so `$filters += [...]`
       fills the rest and the view never needs `isset()`.
       Dropdown options come from `SELECT DISTINCT` on the table, not a
-      hardcoded list mirroring `tools/generate/main.go`: a new action Go
+      hardcoded list mirroring `cmd/generate/main.go`: a new action Go
       starts sending appears in the filter with no PHP change. Cost logged
       under Demo shortcuts.
       UI matches the reference screenshot: a toolbar reading
@@ -152,7 +152,7 @@ active pill, white content card, Plus Jakarta Sans, pill badges.
       four of them should be one request, not four.
       Empty state splits in two: "No events match these filters" + Clear,
       versus phase B's "No events yet". Without the split, filtering to zero
-      rows tells you to go run `tools/send` against a table that already has
+      rows tells you to go run `cmd/send` against a table that already has
       43 rows.
       Reference also had an Export button; deliberately skipped, nothing asks
       for CSV yet.
@@ -283,7 +283,7 @@ built deliberately rather than filled with whatever the screenshot had.
 
 Blocked on the `event_timestamp` spread — see Next item 3. Three of the four
 cards read from that column, and every row currently carries the clock time
-of a `tools/send` run, so "events today" would print 0 and stay 0. Build the
+of a `cmd/send` run, so "events today" would print 0 and stay 0. Build the
 timestamp fix first, then this.
 
 Replace `Route::view('/', 'dashboard')` with a `DashboardController@index`.
@@ -345,7 +345,7 @@ removed on 2026-09-22 for exactly that reason.
 # Friday deliverable (mentor)
 
 - [x] Synthetic event dataset matching the locked model.
-      `backend/tools/generate` (`go run ./tools/generate`) writes
+      `backend/cmd/generate` (`go run ./cmd/generate`) writes
       `backend/events.json` — random platform/domain/source/action per
       event via `randomChoice`, `UserID`/`UserIP` randomly nil-or-set to
       represent anonymous vs. logged-in events. `event_payload` now varies
@@ -354,7 +354,7 @@ removed on 2026-09-22 for exactly that reason.
       catch a drifted `actions`/`actionPayloads` pair at generation time,
       not silently).
 - [x] Script that turns the dataset into `POST /event` requests.
-      `backend/tools/send` (`go run ./tools/send`) reads `events.json`,
+      `backend/cmd/send` (`go run ./cmd/send`) reads `events.json`,
       POSTs each event to `http://127.0.0.1:8080/event`, prints
       status/result per request plus a sent/failed summary. Verified: 20/20
       `201`, `SELECT COUNT(*)` confirmed rows landed.
@@ -410,7 +410,7 @@ Log in with `manager@example.com` / `password` (sees Users) or
 - Side-effect imports (`_ "...mysql"`, `_ "...godotenv/autoload"`): imported
   only so their `init()` runs (driver registration / `.env` load).
 - `godotenv/autoload` reads `.env` from the process working directory, so
-  the app needs `backend/.env` when run via `cd backend && go run .`.
+  the app needs `backend/.env` when run via `cd backend && go run ./cmd/api`.
 - Docker named volume `mysql_data` persists across `up`/`down`; `down -v`
   wipes it. That's why an old `events` table survived a schema change.
 - `*int` / `*string` struct fields = nullable columns (`nil` → `NULL`).
@@ -524,17 +524,17 @@ Log in with `manager@example.com` / `password` (sees Users) or
   event happened. `db/schema.sql:10` declares it
   `TIMESTAMP DEFAULT CURRENT_TIMESTAMP` and the INSERT in
   `controllers/event.go` omits the column, so MySQL fills it at write time.
-  `tools/generate` never invents a timestamp at all — the field exists on
+  `cmd/generate` never invents a timestamp at all — the field exists on
   the struct (`models/event.go:17`) and is bound from JSON, it is just not
   in the INSERT.
-  Consequence: every row carries the clock time of a `tools/send` run, so
+  Consequence: every row carries the clock time of a `cmd/send` run, so
   the 43 rows sit on two days (checked 2026-09-22 — 3 rows on `2026-09-09`,
   40 on `2026-09-15`, 5 distinct timestamps in total, **nothing in the last
   week**). The date filter is therefore only demoable as "all" or "nothing",
   and any dashboard card counting "events today" would read 0.
   Fix is small and arguably more correct than what is there now: have
   `CreateEvent` insert `event_timestamp` when the body carries one and fall
-  back to the DB default when it does not, then have `tools/generate` spread
+  back to the DB default when it does not, then have `cmd/generate` spread
   events across the last couple of weeks. A real tracker does receive events
   that happened before they arrived — offline queues, mobile batching — so
   accepting the field is not just a demo convenience.

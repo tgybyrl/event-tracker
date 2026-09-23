@@ -59,7 +59,7 @@ What I'd do differently: TODO
 ## 2026-09-15 — `payloadFor` panics on an unmapped action
 
 Problem: `event_payload` now varies per `event_action` via an
-  `actionPayloads` map in `tools/generate`. `actions` and
+  `actionPayloads` map in `cmd/generate`. `actions` and
   `actionPayloads` are two separate lists that must stay in sync — if a
   new action is added to `actions` without a matching entry in
   `actionPayloads`, the lookup misses.

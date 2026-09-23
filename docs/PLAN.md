@@ -21,6 +21,11 @@ That was the last item in the mentor's 1–6 curriculum. The next thing in the
 build order is **event data ingestion + Redis** — a new stack layer, not more
 panel. Nothing is scoped for it yet.
 
+Cleared on 2026-09-23, before starting Redis (see "Done on 2026-09-23" below):
+the Go binaries moved under `backend/cmd/`, `event_timestamp` is now the
+client's time, `POST /event` validates its body, and both panel screens that
+showed nothing — the dashboard and `/settings` — are built.
+
 Phases D and E were both built on the *provisional* screen-based access model
 — the mentor has still not answered the "specific access" question. If the
 answer turns out to be row-level, that work stands and a join table plus one
@@ -70,7 +75,8 @@ posted with `201`, confirmed with `SELECT COUNT(*) FROM events;`.
      column without a marshal round-trip), `event_timestamp` dropped
      from the INSERT (DB `DEFAULT` fills it), `return` added after the
      500 case, 201 + `event_id` returned on success, debug `fmt.Println`
-     removed.
+     removed. *(2026-09-23: `event_timestamp` is back in the INSERT as
+     `COALESCE(?, CURRENT_TIMESTAMP)` — see "Done on 2026-09-23".)*
 6. [x] **PHP admin panel** — Laravel, event tablosunu listeleme ve filtreleme
        olucak. Ekstradan kullanıcı verilicek, admin panelden verilicek. Full
        laravel yapıları kullanılıcak. Her şey panelden yöneltilicek db
@@ -273,7 +279,7 @@ Phase C should be written without it either way.
 **Do not write a migration for `events`.** Go owns that table and
 `db/schema.sql` is the single source of truth. Laravel only reads it.
 
-# Panel: the two screens still showing nothing (scoped 2026-09-22)
+# Panel: dashboard and settings (scoped 2026-09-22, built 2026-09-23)
 
 Neither is in the mentor's notes. They exist because the reference dashboard
 screenshot had them and phase A built the shell. Scoped here so they get
@@ -281,10 +287,12 @@ built deliberately rather than filled with whatever the screenshot had.
 
 ## Dashboard (`/`)
 
-Blocked on the `event_timestamp` spread — see Next item 3. Three of the four
-cards read from that column, and every row currently carries the clock time
-of a `cmd/send` run, so "events today" would print 0 and stay 0. Build the
-timestamp fix first, then this.
+**Built 2026-09-23** (`7c6550e`), after the timestamp fix it was blocked on.
+`DashboardController@index`; the Events-by-action list uses
+`<x-action-badge>`, extracted from the events list (`b8efefc`) so an action
+reads as the same colour on both screens, and each row links to `/events`
+filtered to that action. "Events this week" shipped as a rolling
+"Last 7 days". The scoping below is kept as written.
 
 Replace `Route::view('/', 'dashboard')` with a `DashboardController@index`.
 Four cards:
@@ -313,7 +321,9 @@ logged under Demo shortcuts, and worth saying out loud rather than hiding.
 
 ## Settings (`/settings`)
 
-Not blocked. Buildable now.
+**Built 2026-09-23** (`61ecd63`). `SettingsController` edit/update plus
+`UpdateSettingsRequest`; all three rules below hold, and email and role are
+shown read-only. The scoping below is kept as written.
 
 The sidebar has linked here since phase A and it 404s. The thing worth
 putting behind it is **your own account**: change your own name and password,
@@ -359,6 +369,33 @@ removed on 2026-09-22 for exactly that reason.
       status/result per request plus a sent/failed summary. Verified: 20/20
       `201`, `SELECT COUNT(*)` confirmed rows landed.
 
+# Done on 2026-09-23
+
+Nine commits, `ab6a8a7`..`b528b0d`, one per step, plus the docs commit that wrote this.
+
+- **`backend/cmd/`.** The three `package main` directories now sit under
+  `cmd/api`, `cmd/generate`, `cmd/send`. Only files moved; `config/`,
+  `controllers/`, `models/` stay put, no `pkg/`, no `internal/` — nothing
+  outside this module imports them. Still run from `backend/`, because
+  `.env` and `events.json` are resolved from the working directory.
+- **`event_timestamp` is the client's time.** `models.Event.Timestamp` is
+  `*time.Time` (a plain `time.Time` cannot say "not sent" — its zero value is
+  year 0001), and the INSERT uses `COALESCE(?, CURRENT_TIMESTAMP)`, so a body
+  without one gets the database clock exactly as before. Everything runs in
+  UTC: driver default, MySQL container, Laravel.
+- **Generator** spreads events over the last 14 days, makes 200 of them,
+  draws `user_id` from 1..1000, emits real v4 UUIDs (version/variant bits
+  set by hand, no new dependency), and stops on errors instead of writing an
+  empty `events.json`. 200/200 posted with `201`; the table now covers 15
+  calendar days.
+- **`POST /event` validates.** `binding` tags on `models.Event` (UUID
+  `event_id`, required columns with `max=` matching `schema.sql`, `ip` on
+  `user_ip`); payload must be a JSON object; a timestamp more than a minute in
+  the future is a 400; a duplicate `event_id` is a 409; other DB errors are
+  logged and answered with a generic 500.
+- **Dashboard** and **`/settings`** built — see the section above.
+- `admin/.env.example` names MySQL and `events_db` instead of SQLite.
+
 # Next (smallest steps, in order)
 
 1. Still ask the mentor the "specific access" question — phases D and E both
@@ -370,23 +407,11 @@ removed on 2026-09-22 for exactly that reason.
    written down** — every field in both entries still reads `TODO`. The
    answer exists; the record does not, which is the same as not having it in
    a month.
-3. Give `event_timestamp` a real spread. **Do this before the dashboard.**
-   Not cosmetic, and not only a demo fix: the column currently records when
-   the row was *inserted*, which is a different fact from when the event
-   *happened*, and conflating the two is a data-model bug — the one area
-   this file says is not a shortcut zone. It also blocks two things at once:
-   phase C's date filter can only be demoed as "all" or "nothing" while the
-   table holds two days and nothing at all in the last week, and an "events
-   today" stat card would read 0. Needs a change in Go, not just the
-   generator — see the Demo shortcuts entry for why.
-4. `/settings` → your own account (name + password). **Not blocked by
-   anything — this is the one panel screen buildable right now.** Fixes a
-   real gap: a worker currently has no way to change their own password.
-   Fully scoped under "Panel: the two screens still showing nothing".
-5. Replace `Route::view('/', 'dashboard')` with a controller that fills the
-   four stat cards. Deferred since phase B, and **blocked on item 3** — build
-   it before the timestamp spread and three of the four cards read 0 forever.
-   Card list and queries are under the same section as item 4.
+3. Scope **event ingestion + Redis** with the mentor before writing anything:
+   what Redis is for here (a queue between `POST /event` and MySQL is the
+   usual answer), and whether losing a queued event on a crash is acceptable
+   — that decides Redis Lists versus Streams. A worker binary would go in
+   `backend/cmd/worker`.
 *(`user_ip` from body vs. `c.ClientIP()` was item 6 and is now decided — keep
 the body value. Reasoning moved to Demo shortcuts.)*
 
@@ -443,8 +468,8 @@ Log in with `manager@example.com` / `password` (sees Users) or
 # Demo shortcuts (already true in the code — revisit later)
 
 - DSN host hardcoded to `127.0.0.1:3306` in `config/db.go`.
-- `event_id` trusted from the client; no server-side UUID.
-- `CreateEvent` ignores the JSON bind error and sends no success body.
+- `event_id` comes from the client; no server-side UUID. It is checked to
+  be a UUID and a resend is a 409, but the server never makes one itself.
 - `db/seed.sql` is throwaway scratch, not aligned with `schema.sql`.
 - `.env` exists twice: repo root (for `docker compose`) and `backend/`
   (for `godotenv/autoload`). Kept in sync by hand.
@@ -479,7 +504,8 @@ Log in with `manager@example.com` / `password` (sees Users) or
   `env('SEED_MANAGER_PASSWORD') ?? throw new RuntimeException(...)`.
 - No password reset, no email verification, no "remember me". The
   `password_reset_tokens` table exists (Laravel created it) and nothing
-  uses it. A forgotten password means re-running the seeder.
+  uses it. `/settings` lets anyone change a password they still know; a
+  *forgotten* one needs a manager on `/users`, or the seeder for a manager.
 - A deleted panel account is gone, not deactivated — no soft deletes. Fine
   while `users` is four rows that nothing else references; `events.user_id`
   is the *tracked end user*, a different population entirely, so deleting a
@@ -504,13 +530,6 @@ Log in with `manager@example.com` / `password` (sees Users) or
   The fix, if it ever matters, is to hash a dummy password when no user is
   found so both paths cost the same. Worth being able to say out loud: the
   generic message makes enumeration *harder*, not impossible.
-- `Route::view('/', 'dashboard')` renders the shell with no data behind
-  it; the four stat cards still show `—`. `/events` reads the database,
-  the dashboard does not. It is the only screen left in the panel that
-  shows nothing real.
-- The `Settings` item in the sidebar points at `/settings`, which has never
-  been a route — clicking it 404s. It has been there since phase A. Scoped
-  now under "Panel: the two screens still showing nothing".
 - The panel's Eloquent model can write to `events` even though nothing
   does — no `$fillable`, but nothing stops `Event::query()->update(...)`.
   Go is meant to be the only writer; a read-only DB user would enforce it.
@@ -520,24 +539,18 @@ Log in with `manager@example.com` / `password` (sees Users) or
 - No index on any filtered column. Every filter is a full table scan, and so
   is every `DISTINCT`. Adding one means an `ALTER TABLE` on `events`, which
   Go owns — mentor question, not a panel change.
-- `event_timestamp` records when the row was **inserted**, not when the
-  event happened. `db/schema.sql:10` declares it
-  `TIMESTAMP DEFAULT CURRENT_TIMESTAMP` and the INSERT in
-  `controllers/event.go` omits the column, so MySQL fills it at write time.
-  `cmd/generate` never invents a timestamp at all — the field exists on
-  the struct (`models/event.go:17`) and is bound from JSON, it is just not
-  in the INSERT.
-  Consequence: every row carries the clock time of a `cmd/send` run, so
-  the 43 rows sit on two days (checked 2026-09-22 — 3 rows on `2026-09-09`,
-  40 on `2026-09-15`, 5 distinct timestamps in total, **nothing in the last
-  week**). The date filter is therefore only demoable as "all" or "nothing",
-  and any dashboard card counting "events today" would read 0.
-  Fix is small and arguably more correct than what is there now: have
-  `CreateEvent` insert `event_timestamp` when the body carries one and fall
-  back to the DB default when it does not, then have `cmd/generate` spread
-  events across the last couple of weeks. A real tracker does receive events
-  that happened before they arrived — offline queues, mobile batching — so
-  accepting the field is not just a demo convenience.
+- The dashboard's "Events today" is the **UTC** day. Between 00:00 and 03:00
+  Istanbul time it still counts yesterday evening. Fixing it means setting a
+  timezone on both the MySQL session and Laravel, together — changing one
+  alone makes every stored time disagree with every displayed one.
+- Changing your password on `/settings` does not sign out your other
+  sessions. Laravel's `logoutOtherDevices()` needs the `AuthenticateSession`
+  middleware, which is not enabled.
+- `POST /event` accepts any past `event_timestamp`, however old. Only the
+  future is bounded.
+- Gin's validation errors go back to the client as-is (`Key: 'Event.EventID'
+  Error:Field validation for ...`). Readable enough for a demo; a real API
+  would map them to field names from the JSON.
 
 ---
 

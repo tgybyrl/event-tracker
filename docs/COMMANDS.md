@@ -118,7 +118,7 @@ go mod tidy
 ```
 cd backend && go run ./cmd/generate
 ```
-20 sentetik event üretip `backend/events.json`'a yazar. Dosya varsa üzerine yazar.
+200 sentetik event (timestamp'leri son 14 güne yayılmış) üretip `backend/events.json`'a yazar. Dosya varsa üzerine yazar.
 
 ```
 cd backend && go run ./cmd/send

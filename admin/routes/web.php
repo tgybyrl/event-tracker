@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
@@ -23,9 +24,7 @@ Route::post('/logout', [AuthController::class, 'destroy'])
 // Everything below needs a session. The 'auth' middleware redirects to the
 // route *named* login, which is why the name above matters.
 Route::middleware('auth')->group(function () {
-    // Phase A plumbing: renders the shell with no data behind it.
-    // A later pass replaces this with a controller that fills the stat cards.
-    Route::view('/', 'dashboard');
+    Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 
     Route::get('/events', [EventController::class, 'index'])->name('events.index');
 

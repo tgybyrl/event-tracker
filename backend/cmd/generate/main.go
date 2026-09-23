@@ -7,6 +7,7 @@ import (
 	"fmt"
 	mrand "math/rand"
 	"os"
+	"time"
 
 	"event-api/models"
 )
@@ -15,6 +16,10 @@ import (
 var platforms = []string{"web", "app", "tablet"}
 var domains = []string{"flo.com.tr", "flo.com"}
 var source = []string{"listing", "detail", "cart"}
+
+// How far back generated events may reach. Wide enough that the panel's date
+// filter and "last 7 days" have something on both sides of the line.
+const spread = 14 * 24 * time.Hour
 var actions = []string{"product_click", "add_to_cart", "checkout_start"}
 var actionPayloads = map[string]string{
       "product_click": `{
@@ -56,12 +61,20 @@ func randomChoice(options []string) string{
 	return options[rand_choice]
 }
 
+// A moment somewhere in the last `spread`, to the second - MySQL's TIMESTAMP
+// keeps no fractions anyway.
+func randomTimestamp() *time.Time {
+	t := time.Now().UTC().Add(-time.Duration(mrand.Int63n(int64(spread)))).Truncate(time.Second)
+	return &t
+}
+
 func randomEvent() models.Event {
 	var userID *int
 	var userIP *string
 
 	if mrand.Intn(2) == 0 {
-		id := mrand.Intn(1000)
+		// 1..1000: a user_id of 0 would read as a real user, not a missing one.
+		id := mrand.Intn(1000) + 1
 		userID = &id
 	}
 
@@ -84,10 +97,11 @@ func randomEvent() models.Event {
 		Source: randomChoice(source),
 		Action: action,
 		Payload:json.RawMessage(payloadJSON),
+		Timestamp: randomTimestamp(),
 	}
 }
 func main() {
-	count := 20
+	count := 200
 
 	events := make([]models.Event, 0, count)
 

@@ -3,6 +3,7 @@
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EventController;
+use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -27,6 +28,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 
     Route::get('/events', [EventController::class, 'index'])->name('events.index');
+
+    // Your own account. No Gate, and no {user} in the path: the controller
+    // edits whoever is logged in, so there is nobody else's row to reach.
+    Route::get('/settings', [SettingsController::class, 'edit'])->name('settings.edit');
+    Route::put('/settings', [SettingsController::class, 'update'])->name('settings.update');
 
     // One line for six routes: index/create/store/edit/update/destroy, all
     // behind the same Gate. `show` is excluded — a read-only page for four

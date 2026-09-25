@@ -38,6 +38,8 @@ func main() {
 	// Reads hand out every stored event, so they need the key.
 	read := v1.Group("", middleware.RequireAPIKey(apiKey))
 	read.GET("/events", controllers.ListEvents)
+	read.GET("/events/facets", controllers.EventFacets)
+	read.GET("/events/stats", controllers.EventStats)
 
 	r.Run()
 }

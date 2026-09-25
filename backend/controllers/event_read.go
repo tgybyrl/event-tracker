@@ -136,3 +136,35 @@ func buildEventFilter(q eventQuery, from, to time.Time) (string, []any) {
 	}
 	return " WHERE " + strings.Join(conds, " AND "), args
 }
+
+// The columns a client may ask for distinct values of, under the names the
+// panel's filter form already uses. A fixed list, because a column name
+// cannot travel as a ? argument — it has to be written into the SQL text,
+// so it must never come from the request.
+var facetColumns = []struct{ name, column string }{
+	{"platform", "event_platform"},
+	{"domain", "event_domain"},
+	{"source", "event_source"},
+	{"action", "event_action"},
+}
+
+// EventFacets answers GET /api/v1/events/facets: every value each filterable
+// column currently holds, sorted. The panel builds its filter dropdowns from
+// this, so a new action Go starts receiving appears there with no change in
+// the panel.
+func EventFacets(c *gin.Context) {
+	out := gin.H{}
+
+	for _, f := range facetColumns {
+		values := []string{}
+		query := "SELECT DISTINCT " + f.column + " FROM events ORDER BY " + f.column
+		if err := config.DB.Select(&values, query); err != nil {
+			log.Println("facet", f.column+":", err)
+			c.JSON(500, gin.H{"error": "could not read facets"})
+			return
+		}
+		out[f.name] = values
+	}
+
+	c.JSON(200, out)
+}

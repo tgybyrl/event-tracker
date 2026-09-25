@@ -3,6 +3,9 @@ package main
 import (
 	"event-api/config"
 	"event-api/controllers"
+	"event-api/middleware"
+	"log"
+	"os"
 
 	"github.com/gin-gonic/gin"
 )
@@ -10,6 +13,14 @@ import (
 func main() {
 
 	config.ConnectDB()
+
+	// Fail closed: with no key configured the read endpoints would have
+	// nothing to compare against, so refuse to start instead of serving them
+	// open. (.env is already loaded by config's godotenv/autoload import.)
+	apiKey := os.Getenv("EVENTS_API_KEY")
+	if apiKey == "" {
+		log.Fatal("EVENTS_API_KEY is not set; see backend/.env.example")
+	}
 
 	r := gin.Default()
 
@@ -23,6 +34,10 @@ func main() {
 
 	// Public: trackers post events from browsers and apps.
 	v1.POST("/events", controllers.CreateEvent)
+
+	// Reads hand out every stored event, so they need the key.
+	read := v1.Group("", middleware.RequireAPIKey(apiKey))
+	read.GET("/events", controllers.ListEvents)
 
 	r.Run()
 }

@@ -14,6 +14,13 @@ return [
     |
     */
 
+    // The Go service's read endpoints — the panel's only source of event
+    // data. The key must equal EVENTS_API_KEY in backend/.env.
+    'events_api' => [
+        'url' => env('EVENTS_API_URL', 'http://127.0.0.1:8080/api/v1'),
+        'key' => env('EVENTS_API_KEY'),
+    ],
+
     'postmark' => [
         'key' => env('POSTMARK_API_KEY'),
     ],

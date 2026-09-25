@@ -11,7 +11,7 @@ import (
 	"event-api/models"
 )
 
-const targetURL = "http://127.0.0.1:8080/event"
+const targetURL = "http://127.0.0.1:8080/api/v1/events"
 
 func main() {
 	data, err := os.ReadFile("events.json")

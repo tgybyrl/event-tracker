@@ -365,7 +365,8 @@ removed on 2026-09-22 for exactly that reason.
       not silently).
 - [x] Script that turns the dataset into `POST /event` requests.
       `backend/cmd/send` (`go run ./cmd/send`) reads `events.json`,
-      POSTs each event to `http://127.0.0.1:8080/event`, prints
+      POSTs each event to `http://127.0.0.1:8080/api/v1/events` (was `/event`
+      until 2026-09-25), prints
       status/result per request plus a sent/failed summary. Verified: 20/20
       `201`, `SELECT COUNT(*)` confirmed rows landed.
 
@@ -408,7 +409,7 @@ Nine commits, `ab6a8a7`..`b528b0d`, one per step, plus the docs commit that wrot
    answer exists; the record does not, which is the same as not having it in
    a month.
 3. Scope **event ingestion + Redis** with the mentor before writing anything:
-   what Redis is for here (a queue between `POST /event` and MySQL is the
+   what Redis is for here (a queue between `POST /api/v1/events` and MySQL is the
    usual answer), and whether losing a queued event on a crash is acceptable
    — that decides Redis Lists versus Streams. A worker binary would go in
    `backend/cmd/worker`.
@@ -546,7 +547,7 @@ Log in with `manager@example.com` / `password` (sees Users) or
 - Changing your password on `/settings` does not sign out your other
   sessions. Laravel's `logoutOtherDevices()` needs the `AuthenticateSession`
   middleware, which is not enabled.
-- `POST /event` accepts any past `event_timestamp`, however old. Only the
+- `POST /api/v1/events` accepts any past `event_timestamp`, however old. Only the
   future is bounded.
 - Gin's validation errors go back to the client as-is (`Key: 'Event.EventID'
   Error:Field validation for ...`). Readable enough for a demo; a real API

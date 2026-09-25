@@ -123,7 +123,7 @@ cd backend && go run ./cmd/generate
 ```
 cd backend && go run ./cmd/send
 ```
-`events.json`'ı okur, her event'i `POST :8080/event`'e gönderir. Her istek için status basar, sonunda gönderilen/başarısız özeti verir. **Go servisi ayakta olmalı.**
+`events.json`'ı okur, her event'i `POST :8080/api/v1/events`'e gönderir. Her istek için status basar, sonunda gönderilen/başarısız özeti verir. **Go servisi ayakta olmalı.**
 
 ---
 
@@ -244,14 +244,13 @@ docker compose ps
 
 ## Postman
 
-Go servisi ayaktayken `POST http://127.0.0.1:8080/event`:
+Go servisi ayaktayken `POST http://127.0.0.1:8080/api/v1/events`:
 
 - **Body → raw → JSON** seçili olmalı.
-- Zorunlu alanlar: `event_id`, `event_platform`, `event_domain`, `event_source`, `event_action`, `event_payload`.
-- Opsiyonel: `user_id`, `user_ip`.
-- `event_timestamp` gönderme — veritabanı `DEFAULT CURRENT_TIMESTAMP` ile kendisi dolduruyor.
+- Zorunlu alanlar: `event_id` (UUID), `event_platform`, `event_domain`, `event_source`, `event_action`, `event_payload` (JSON object).
+- Opsiyonel: `user_id`, `user_ip`, `event_timestamp` (RFC 3339, ör. `2026-09-20T14:30:00Z`). `event_timestamp` gönderilmezse veritabanının saati kullanılır; gelecekteki bir zaman `400` alır.
 
-Beklenen cevap: `201` + `{"event_id": "..."}`.
+Beklenen cevap: `201` + `{"event_id": "..."}`. Aynı `event_id` ikinci kez gelirse `409`, eksik ya da bozuk alan `400`.
 
 ---
 

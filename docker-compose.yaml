@@ -4,9 +4,16 @@ services:
     environment:
       - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
       - MYSQL_DATABASE=${MYSQL_DATABASE}
+      # Read by db/panel-db.sh when it creates the panel's MySQL user.
+      - PANEL_DB_PASSWORD=${PANEL_DB_PASSWORD}
     ports:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql #soldaki benim diski:sağdaki konternerin içi
+      # Files in /docker-entrypoint-initdb.d run in name order, once, when the
+      # volume is empty: the events table first, then the panel's database
+      # and user. An existing volume ignores them (see docs/COMMANDS.md).
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./db/panel-db.sh:/docker-entrypoint-initdb.d/02-panel-db.sh:ro
 volumes:
   mysql_data:

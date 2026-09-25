@@ -54,14 +54,31 @@ docker compose down -v
 ```
 Container'ı **ve veriyi** siler. Tablo ve tüm satırlar gider, sıfırdan schema yüklemen gerekir.
 
-### Şema yükleme
+### Veritabanlarının kurulumu
+
+Boş bir volume ile ilk `docker compose up -d db` her şeyi kendisi kurar. `docker-compose.yaml`, iki dosyayı container'ın `/docker-entrypoint-initdb.d/` klasörüne bağlıyor ve MySQL bunları volume boşken **bir kez**, isim sırasıyla çalıştırıyor:
+
+1. `01-schema.sql` = `db/schema.sql` → `events_db` içinde `events` tablosu.
+2. `02-panel-db.sh` = `db/panel-db.sh` → `panel_db` veritabanı ve `panel` MySQL kullanıcısı. `panel` sadece `panel_db`'ye erişebilir, `events_db`'ye hiç erişemez.
+
+Önce kök dizindeki `.env` dosyasını `.env.example`'dan oluştur. `PANEL_DB_PASSWORD` dolu olmalı, yoksa script durur.
+
+Volume **zaten doluysa** bu dosyalar çalışmaz. O durumda panel kurulumunu elle bir kez çalıştır:
+
+```
+docker compose up -d db                                          # yeni env ile container'ı yeniden oluştur
+docker compose exec db sh /docker-entrypoint-initdb.d/02-panel-db.sh
+cd admin && php artisan migrate                                  # panel tablolarını panel_db'de oluştur
+```
+
+Script tekrar çalıştırılabilir, her satırı `IF NOT EXISTS`.
+
+`events` tablosunu elle yüklemen gerekirse (eski yöntem):
 
 ```
 docker compose exec -T db mysql -u root -pSIFRE events_db < db/schema.sql
 ```
-`db/schema.sql`'i container'daki MySQL'e gönderir. `-p` ile şifre arasında **boşluk yok**. Şifre shell history'sine düşer; tek seferlik kurulum komutu olduğu için kabul ediyoruz.
-
-`-T` = TTY açma. Dosya yönlendirmesi (`<`) ile çalışması için gerekli.
+`-p` ile şifre arasında **boşluk yok**. `-T` = TTY açma, dosya yönlendirmesi (`<`) ile çalışması için gerekli.
 
 ### MySQL client'a girme
 
@@ -238,7 +255,11 @@ docker compose ps
 
 **Laravel `SQLSTATE[HY000] [1045] Access denied`**
 
-`admin/.env` içindeki `DB_PASSWORD` ile kök dizindeki `.env` içindeki `MYSQL_ROOT_PASSWORD` aynı mı? Üç ayrı `.env` var ve elle senkron tutuluyor.
+Panel `panel` kullanıcısıyla bağlanıyor. `admin/.env` içindeki `DB_PASSWORD`, kök dizindeki `.env` içindeki `PANEL_DB_PASSWORD` ile aynı mı? `panel` kullanıcısı hiç oluşturulmadıysa yukarıdaki "Veritabanlarının kurulumu" adımlarını çalıştır.
+
+**Panelde "The event service is not answering" (503)**
+
+Panel event verisini Go API'den alıyor. Go servisi ayakta mı (`cd backend && go run ./cmd/api`)? `admin/.env` içindeki `EVENTS_API_KEY`, `backend/.env` içindekiyle aynı mı? Gerçek hata `admin/storage/logs/laravel.log` dosyasında.
 
 ---
 

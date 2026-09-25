@@ -9,9 +9,12 @@ phase plan for this panel.
   Eloquent model for `events`; do not add one.
 - **Do NOT create a migration for the `events` table.** Go owns it and
   `db/schema.sql` is the single source of truth. `php artisan migrate`
-  here manages only Laravel's own tables (users, sessions, cache, jobs).
-- The panel connects to the same `events_db` as the Go service. DB
-  credentials come from `admin/.env`, which is gitignored.
+  here manages only Laravel's own tables (users, sessions, cache, jobs), in
+  `panel_db`.
+- The panel's own tables live in `panel_db`, reached as the `panel` MySQL
+  user, which has **no rights on `events_db`**. DB credentials come from
+  `admin/.env`, which is gitignored. `php artisan migrate` runs against
+  `panel_db` only.
 
 The root `CLAUDE.md` applies here too — including no new dependencies
 without asking first, and no source files written for me unless I say

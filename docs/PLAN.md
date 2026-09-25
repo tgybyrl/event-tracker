@@ -1,14 +1,15 @@
-# Scope right now: DEMO first, then full project
+# Scope: this is the full project (decided 2026-09-25)
 
-Mentor wants a small working demo before the full build.
-Assumption (unconfirmed): the demo becomes the foundation, not throwaway.
+It started as a demo the mentor asked for before the full build. As of
+2026-09-25 it **is** the full build: what exists is the foundation, not
+something to throw away.
 
-- Keep it small. Shortest thing that runs and can be shown.
-- Hardcoded values, missing error handling, no auth: fine for now.
 - Data model and DB schema: NOT a shortcut area. Get these right the
   first time — they're expensive to change later.
-- When I take a demo shortcut, note it under "Demo shortcuts" so I know
-  what to revisit.
+- The shortcuts taken while it was a demo are now a debt list, under
+  "Known shortcuts". Pay them down; do not add new ones silently.
+- Tests: I write them myself (decided 2026-09-25). Feature work is verified
+  by running the app until then.
 
 # Current phase
 
@@ -17,14 +18,20 @@ B (events list), C (filters), D (login + roles) and E (user management) all
 closed; phase E landed on `main` at `eb64e74` on 2026-09-22. See "Panel
 phases" below.
 
-That was the last item in the mentor's 1–6 curriculum. The next thing in the
-build order is **event data ingestion + Redis** — a new stack layer, not more
-panel. Nothing is scoped for it yet.
+That was the last item in the mentor's 1–6 curriculum. The next layer in the
+build order is **event data ingestion + Redis**. Before it, a demo market page
+is planned so real events replace the synthetic ones — see "Next". Neither is
+scoped yet; both wait on the mentor questions.
 
 Cleared on 2026-09-23, before starting Redis (see "Done on 2026-09-23" below):
 the Go binaries moved under `backend/cmd/`, `event_timestamp` is now the
 client's time, `POST /event` validates its body, and both panel screens that
 showed nothing — the dashboard and `/settings` — are built.
+
+On 2026-09-25 (branch `panel-via-api`, see "Done on 2026-09-25"): the panel
+stopped reading MySQL for events and calls Go's read API instead, and moved
+its own tables into a separate `panel_db` with a MySQL user that cannot see
+`events_db`. `POST` moved to `/api/v1/events`.
 
 Phases D and E were both built on the *provisional* screen-based access model
 — the mentor has still not answered the "specific access" question. If the
@@ -144,7 +151,7 @@ active pill, white content card, Plus Jakarta Sans, pill badges.
       Dropdown options come from `SELECT DISTINCT` on the table, not a
       hardcoded list mirroring `cmd/generate/main.go`: a new action Go
       starts sending appears in the filter with no PHP change. Cost logged
-      under Demo shortcuts.
+      under Known shortcuts.
       UI matches the reference screenshot: a toolbar reading
       `Showing [25 ▾] per page` on the left, a `▽ Filter` button on the right,
       and a field panel below it. The panel is a `<div hidden>` toggled from
@@ -317,7 +324,7 @@ people actually do. **No chart library** — that would be a dependency added
 for a demo, and the rule is no new dependencies without a reason.
 
 Cost: about five queries on a table with no indexes. Fine at 43 rows, already
-logged under Demo shortcuts, and worth saying out loud rather than hiding.
+logged under Known shortcuts, and worth saying out loud rather than hiding.
 
 ## Settings (`/settings`)
 
@@ -333,7 +340,7 @@ The justification is a real gap phase E left, not a desire to fill a nav
 item: **a worker cannot change their own password.** Managers can edit
 themselves at `/users/{id}/edit`; workers cannot reach `/users` at all, so
 today a forgotten worker password means re-running the seeder. That is
-already in the Demo shortcuts list.
+already in the Known shortcuts list.
 
 Three rules fall straight out of phase E and none of them is optional:
 
@@ -397,34 +404,63 @@ Nine commits, `ab6a8a7`..`b528b0d`, one per step, plus the docs commit that wrot
 - **Dashboard** and **`/settings`** built — see the section above.
 - `admin/.env.example` names MySQL and `events_db` instead of SQLite.
 
+# Done on 2026-09-25 (branch `panel-via-api`)
+
+- **API under `/api/v1`.** `POST /api/v1/events` replaces `POST /event`
+  (removed, not aliased — nothing outside the repo called it).
+- **Read endpoints, behind a key.** `GET /api/v1/events` (filters, page,
+  per_page; answers `data` + `meta`), `GET /api/v1/events/facets` (distinct
+  values per filter column), `GET /api/v1/events/stats` (dashboard counts in
+  one pass over the table). `middleware.RequireAPIKey` checks
+  `Authorization: Bearer <EVENTS_API_KEY>` with a constant-time compare; the
+  server refuses to start with the key unset. `POST` stays public — the
+  market page will call it from a browser.
+- **Filter SQL** is built from fixed column names only; every value is a `?`
+  argument. Date bounds compare the plain column (`>= from`, `< to + 1 day`),
+  so a future index on `event_timestamp` can be used.
+- **Panel reads through Go.** `app/Services/EventsApi.php` is the only way the
+  panel reaches event data; `app/Models/Event.php` is deleted. Views were not
+  touched: the list gets a hand-built `LengthAwarePaginator`. Go down, slow or
+  refusing the key → one 503 page naming the service, and the error is logged.
+- **Panel database.** `panel_db` + a `panel` MySQL user with no rights on
+  `events_db`, created by `db/panel-db.sh`. `docker-compose.yaml` mounts
+  `schema.sql` and that script into `/docker-entrypoint-initdb.d`, so a fresh
+  volume builds everything from one `docker compose up`. Locally the three
+  panel accounts were copied across unchanged and the nine Laravel tables
+  dropped from `events_db`, which now holds only `events`.
+
 # Next (smallest steps, in order)
 
-1. Still ask the mentor the "specific access" question — phases D and E both
-   shipped on the provisional screen-based answer. If it turns out to be
-   row-level, the addition is a join table plus one `where`, not a rewrite.
-   It is the last item under "Open questions for mentor".
-2. Write the two owed answers into `DECISIONS.md`: "why Gin" and "why sqlx".
-   **Both were answered to the mentor out loud on 2026-09-22, but neither is
-   written down** — every field in both entries still reads `TODO`. The
-   answer exists; the record does not, which is the same as not having it in
-   a month.
-3. Scope **event ingestion + Redis** with the mentor before writing anything:
-   what Redis is for here (a queue between `POST /api/v1/events` and MySQL is the
-   usual answer), and whether losing a queued event on a crash is acceptable
-   — that decides Redis Lists versus Streams. A worker binary would go in
-   `backend/cmd/worker`.
+1. Take "Open questions for mentor" to the mentor. The first five decide the
+   next steps; the rest can wait.
+2. **Demo market page** — listing, product detail, add to cart — sending real
+   events to `POST /api/v1/events` instead of the synthetic dataset. Its three
+   pages map onto the `event_source` values `listing` / `detail` / `cart`.
+   Needs CORS on `POST` in Go. Funnels need a `session_id`, which waits for the
+   mentor's answer on the schema.
+3. **Event ingestion + Redis**, once the mentor has said what Redis is for and
+   whether a lost queued event is acceptable (Lists versus Streams). A worker
+   binary would go in `backend/cmd/worker`.
+4. Write the two owed answers into `DECISIONS.md`: "why Gin" and "why sqlx".
+   Both were answered to the mentor out loud on 2026-09-22; every field in both
+   entries still reads `TODO`.
 *(`user_ip` from body vs. `c.ClientIP()` was item 6 and is now decided — keep
-the body value. Reasoning moved to Demo shortcuts.)*
+the body value. Reasoning moved to Known shortcuts.)*
 
 # How to run the panel
 
 ```
-docker compose up -d db          # MySQL must be up
-cd admin && php artisan migrate  # once, after pulling phase D
-cd admin && php artisan db:seed  # once — creates the manager and worker
-cd admin && npm run dev          # Vite, leave running
-cd admin && php artisan serve    # http://127.0.0.1:8000
+docker compose up -d db              # MySQL must be up
+cd backend && go run ./cmd/api       # the panel reads events from here
+cd admin && php artisan migrate      # once — panel tables in panel_db
+cd admin && php artisan db:seed      # once, on an empty panel_db — manager + worker
+cd admin && npm run dev              # Vite, leave running
+cd admin && php artisan serve        # http://127.0.0.1:8000
 ```
+
+Keys that must match across `.env` files: `EVENTS_API_KEY` (backend, admin)
+and `PANEL_DB_PASSWORD` (root) = `DB_PASSWORD` (admin). Each directory has a
+`.env.example`.
 
 Log in with `manager@example.com` / `password` (sees Users) or
 `worker@example.com` / `password` (403 on `/users`).
@@ -443,37 +479,44 @@ Log in with `manager@example.com` / `password` (sees Users) or
 
 # Open questions for mentor
 
-- Separate `user` / id table, or keep `user_id` on the flat `events` row?
-- `user_id` is nullable now (anonymous events). OK, or should it be required?
-- Does the demo `events` schema carry into the full project, or is a
-  rethink expected later?
-- `event_action`: kept as its own column (not a payload key). Agree?
-- Panel reads MySQL directly with Eloquent. In the real project, should it
-  go through the Go API instead so Go stays the only thing touching the
-  events table?
-- Laravel's `users` table now lives in `events_db` alongside `events`.
-  Same database, or should the panel get its own?
-- The panel filters on `event_platform` / `event_domain` / `event_source` /
-  `event_action` and none of them is indexed. Should `events` get indexes on
-  those columns? It is an `ALTER TABLE` on Go's table, so it is your call,
-  not the panel's.
-- The panel is for a company's own staff: a manager account that grants
-  access to worker accounts. When a manager gives a worker "specific"
-  rather than general access — specific to what? Assumed screen-based
-  (what you can do) and shipped phase D on that. The other reading is
-  row-level (a worker sees only certain `event_domain` values), which needs
-  a join table and one extra `where` on the events query. Still unanswered;
-  if it is row-level, phase D's `role` column and Gate stay as they are and
-  the join table is added on top.
+Ordered: the first five decide what gets built next.
 
-# Demo shortcuts (already true in the code — revisit later)
+1. **Next step:** Redis first, or a real event source first (a demo market
+   page with a small tracker script sending real clicks)?
+2. **What is Redis for here?** My reading: `POST` writes to Redis and answers
+   at once, a separate worker inserts into MySQL. Or is it for cache/counters?
+3. **May a queued event be lost if the worker crashes?** Decides Redis Lists
+   (simpler, can lose one) versus Streams (consumer groups + ack; also closer
+   to Kafka later).
+4. **`session_id`:** add one so events can be tied into a funnel
+   (click → cart → checkout)? As its own column, or a payload key?
+5. **"Specific access":** screen-based (what a worker can do — built that way)
+   or row-level (a worker sees only some `event_domain` values)? Row-level is a
+   join table plus one `where`, on top of what exists.
+6. Separate `user` / id table, or keep `user_id` on the flat `events` row?
+   (Raw notes: "tabloları ayırıcam, id tablosu".) `user_id` is nullable for
+   anonymous events — OK?
+7. Store when an event **reached us** (`received_at`) as well as when it
+   happened (`event_timestamp`, now client-supplied)? Makes late delivery
+   visible.
+8. Indexes on `events` for the filtered columns and `event_timestamp`? An
+   `ALTER TABLE` on Go's table.
+9. `event_action` kept as its own column, not a payload key. Agree?
+10. `POST /api/v1/events` is open to anyone. Per-domain API key, or something
+    else, once a real tracker sends from the internet?
+11. Times are stored and shown in UTC; "today" is the UTC day. Show Istanbul
+    time instead?
+
+# Known shortcuts (debt from the demo days — pay down)
 
 - DSN host hardcoded to `127.0.0.1:3306` in `config/db.go`.
 - `event_id` comes from the client; no server-side UUID. It is checked to
   be a UUID and a resend is a 409, but the server never makes one itself.
 - `db/seed.sql` is throwaway scratch, not aligned with `schema.sql`.
-- `.env` exists twice: repo root (for `docker compose`) and `backend/`
-  (for `godotenv/autoload`). Kept in sync by hand.
+- Three `.env` files (repo root, `backend/`, `admin/`) share values kept in
+  sync by hand: `EVENTS_API_KEY` in backend + admin, the panel DB password in
+  root + admin, the MySQL root password in root + backend. Each has a
+  `.env.example`; nothing checks they agree.
 - `user_ip` comes from the request body, not `c.ClientIP()`. **Decided on
   2026-09-22 to keep it that way** — this is no longer an open question.
   Everything posts from localhost, so `c.ClientIP()` would stamp the same
@@ -490,10 +533,18 @@ Log in with `manager@example.com` / `password` (sees Users) or
   third-party IP in the body (server-to-server SDKs, batched mobile sends),
   so the field itself is not the mistake; trusting it blindly would be.
 - Gin logs "You trusted all proxies" — no trusted-proxy list set.
-- `schema.sql` loaded manually, not via a compose `initdb` mount.
-- `.env` now exists three times: repo root, `backend/`, and `admin/`.
-- The panel connects to MySQL as `root` with the same password the
-  container uses. A real deployment needs a read-only panel user.
+- **Go connects to MySQL as `root`.** The panel no longer does (it has its own
+  `panel` user), but Go still can drop any table. It needs its own user with
+  `SELECT, INSERT` on `events_db.events` and nothing else.
+- `schema.sql` runs automatically only on an **empty** volume. There is still
+  no way to apply a schema *change* to an existing database — the coming
+  `session_id` / index / `received_at` questions will need numbered migration
+  files on the Go side before any of them lands.
+- `EVENTS_API_KEY` is one shared secret: no rotation, no per-client keys. Fine
+  with one client (the panel); not once there are several.
+- The panel validates the filter query string and Go validates it again. The
+  rules (column widths, `per_page` 25/50/100, `Y-m-d` dates) are written twice
+  and must be changed together.
 - Seeded panel accounts use the hardcoded password `password`, written
   literally in `DatabaseSeeder.php` and repeated in "How to run the panel"
   above. **The repo is public**, so the admin login is published alongside
@@ -508,7 +559,7 @@ Log in with `manager@example.com` / `password` (sees Users) or
   uses it. `/settings` lets anyone change a password they still know; a
   *forgotten* one needs a manager on `/users`, or the seeder for a manager.
 - A deleted panel account is gone, not deactivated — no soft deletes. Fine
-  while `users` is four rows that nothing else references; `events.user_id`
+  while `users` is a few rows that nothing else references; `events.user_id`
   is the *tracked end user*, a different population entirely, so deleting a
   panel account orphans nothing.
 - Nothing constrains `role` at the database level. `User::ROLES` and the
@@ -531,19 +582,15 @@ Log in with `manager@example.com` / `password` (sees Users) or
   The fix, if it ever matters, is to hash a dummy password when no user is
   found so both paths cost the same. Worth being able to say out loud: the
   generic message makes enumeration *harder*, not impossible.
-- The panel's Eloquent model can write to `events` even though nothing
-  does — no `$fillable`, but nothing stops `Event::query()->update(...)`.
-  Go is meant to be the only writer; a read-only DB user would enforce it.
-- The events list runs four `SELECT DISTINCT` queries per page load to fill
-  the filter dropdowns — five queries total where phase B had one. Fine at
-  43 rows; at scale these want caching or a lookup table.
+- Every `/events` page load calls `/events/facets`, which runs four
+  `SELECT DISTINCT` queries in Go. Fine at a few hundred rows; at scale these
+  want caching or a lookup table.
 - No index on any filtered column. Every filter is a full table scan, and so
-  is every `DISTINCT`. Adding one means an `ALTER TABLE` on `events`, which
-  Go owns — mentor question, not a panel change.
-- The dashboard's "Events today" is the **UTC** day. Between 00:00 and 03:00
-  Istanbul time it still counts yesterday evening. Fixing it means setting a
-  timezone on both the MySQL session and Laravel, together — changing one
-  alone makes every stored time disagree with every displayed one.
+  is every `DISTINCT`. Adding one means an `ALTER TABLE` on `events` —
+  mentor question 8.
+- The dashboard's "Events today" is the **UTC** day (computed in Go's
+  `EventStats`). Between 00:00 and 03:00 Istanbul time it still counts
+  yesterday evening. Mentor question 11.
 - Changing your password on `/settings` does not sign out your other
   sessions. Laravel's `logoutOtherDevices()` needs the `AuthenticateSession`
   middleware, which is not enabled.
@@ -551,7 +598,8 @@ Log in with `manager@example.com` / `password` (sees Users) or
   future is bounded.
 - Gin's validation errors go back to the client as-is (`Key: 'Event.EventID'
   Error:Field validation for ...`). Readable enough for a demo; a real API
-  would map them to field names from the JSON.
+  would map them to field names from the JSON. Same for the query-string
+  errors of the read endpoints.
 
 ---
 

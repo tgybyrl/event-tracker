@@ -1,0 +1,58 @@
+# One address for the whole project: http://localhost
+#
+# Caddy receives every request and hands it to the right program by looking
+# at the start of the path. None of the three programs knows the others
+# exist, or that a proxy sits in front of them.
+#
+#   /market/...  the demo shop (static files, served by Caddy itself)
+#   /api/...     the Go API                      (host :8080)
+#   /admin/...   the Laravel panel               (host :8000)
+#   /build/...   the panel's compiled CSS and JS (host :8000)
+#
+# host.docker.internal is how a container reaches programs running on the
+# machine itself (see extra_hosts in docker-compose.yaml).
+
+# ":80" rather than a domain name: plain HTTP on port 80, so Caddy does not
+# try to obtain an HTTPS certificate for a local setup.
+:80 {
+	# The shop is the front door.
+	redir / /market/list
+	redir /market /market/list
+	redir /market/ /market/list
+
+	handle /api/* {
+		reverse_proxy host.docker.internal:8080
+	}
+
+	handle /admin* {
+		reverse_proxy host.docker.internal:8000
+	}
+
+	# @vite writes links like /build/assets/app-xxxx.css into the panel's
+	# pages, without the /admin prefix, so these go to Laravel too.
+	handle /build/* {
+		reverse_proxy host.docker.internal:8000
+	}
+
+	handle /market/* {
+		# The market folder is mounted at /srv/market, so a request for
+		# /market/css/market.css is the file /srv/market/css/market.css.
+		root * /srv
+
+		# Every product shares one page: /market/product/7 is served
+		# product.html, and the page reads 7 from the address itself.
+		@product path_regexp ^/market/product/[0-9]+$
+		rewrite @product /market/product.html
+
+		# Clean addresses: /market/list is served list.html.
+		try_files {path} {path}.html
+
+		file_server
+	}
+
+	# Anything else. Without this Caddy answers an unmatched path with an
+	# empty 200, which looks like success.
+	handle {
+		respond "Not found" 404
+	}
+}

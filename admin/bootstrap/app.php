@@ -13,7 +13,13 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        // The panel is reached through Caddy (proxy/Caddyfile), which tells
+        // Laravel the address the browser really used in X-Forwarded-*
+        // headers. Trusting them makes redirects and route() links point at
+        // http://localhost/admin/... instead of the internal :8000.
+        // '*' is acceptable only because :8000 is not reachable from outside
+        // this machine; behind a real deployment, name the proxy's address.
+        $middleware->trustProxies(at: '*');
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

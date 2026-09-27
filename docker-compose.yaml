@@ -15,5 +15,21 @@ services:
       # and user. An existing volume ignores them (see docs/COMMANDS.md).
       - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
       - ./db/panel-db.sh:/docker-entrypoint-initdb.d/02-panel-db.sh:ro
+
+  # The single front door: http://localhost. Routes /market, /api and /admin
+  # to the right program (see proxy/Caddyfile).
+  proxy:
+    image: caddy:2.11.4-alpine
+    ports:
+      - "80:80"
+    volumes:
+      # The folder, not the single file: editors save by replacing the file,
+      # and a single-file mount would keep pointing at the old copy.
+      - ./proxy:/etc/caddy:ro
+      - ./market:/srv/market:ro
+    # Lets the container reach the Go API and Laravel, which run on this
+    # machine rather than in containers, as host.docker.internal.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 volumes:
   mysql_data:

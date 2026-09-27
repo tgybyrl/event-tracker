@@ -1,0 +1,197 @@
+[
+  {
+    "id": 1,
+    "brand": "Kuzey",
+    "name": "Tundra Siyah Erkek Outdoor Ayakkabı",
+    "gender": "Erkek",
+    "category": "Ayakkabı",
+    "type": "Shoes",
+    "art": "boot",
+    "scene": "forest",
+    "price": 1399.99,
+    "favorites": 223,
+    "freeShipping": true,
+    "sizes": ["40", "41", "42", "43", "44", "45"],
+    "colors": [
+      { "name": "Siyah", "main": "#2b2d2f", "mid": "#55595d", "sole": "#1a1b1c", "accent": "#3e4247", "lace": "#101112" },
+      { "name": "Füme", "main": "#6b7075", "mid": "#a3a8ad", "sole": "#2d2f31", "accent": "#4c5156", "lace": "#1f2123" }
+    ]
+  },
+  {
+    "id": 2,
+    "brand": "Pace",
+    "name": "Nova Beyaz Kadın Koşu Ayakkabısı",
+    "gender": "Kadın",
+    "category": "Spor",
+    "type": "Shoes",
+    "art": "sneaker",
+    "scene": "track",
+    "price": 1799.99,
+    "favorites": 412,
+    "freeShipping": true,
+    "sizes": ["36", "37", "38", "39", "40", "41"],
+    "colors": [
+      { "name": "Beyaz", "main": "#f3f1ec", "mid": "#ffffff", "sole": "#d8d2c8", "accent": "#f26a21", "lace": "#cbc4b8" },
+      { "name": "Lila", "main": "#cfc3ea", "mid": "#f5f2fb", "sole": "#a597c9", "accent": "#5b3fa8", "lace": "#9d8fc2" }
+    ]
+  },
+  {
+    "id": 3,
+    "brand": "Pace",
+    "name": "Drift Lacivert Erkek Koşu Ayakkabısı",
+    "gender": "Erkek",
+    "category": "Spor",
+    "type": "Shoes",
+    "art": "sneaker",
+    "scene": "track",
+    "price": 1649.99,
+    "favorites": 187,
+    "freeShipping": true,
+    "sizes": ["40", "41", "42", "43", "44", "45"],
+    "colors": [
+      { "name": "Lacivert", "main": "#243a63", "mid": "#e9edf3", "sole": "#1b2638", "accent": "#35c2a8", "lace": "#e9edf3" }
+    ]
+  },
+  {
+    "id": 4,
+    "brand": "Adım",
+    "name": "Soft Bej Kadın Günlük Sneaker",
+    "gender": "Kadın",
+    "category": "Ayakkabı",
+    "type": "Shoes",
+    "art": "sneaker",
+    "scene": "city",
+    "price": 999.99,
+    "favorites": 356,
+    "freeShipping": false,
+    "sizes": ["36", "37", "38", "39", "40"],
+    "colors": [
+      { "name": "Bej", "main": "#e4d3bb", "mid": "#fbf7f1", "sole": "#c9b18f", "accent": "#a8835a", "lace": "#fbf7f1" },
+      { "name": "Siyah", "main": "#2f2f2f", "mid": "#f4f4f4", "sole": "#1c1c1c", "accent": "#595959", "lace": "#f4f4f4" }
+    ]
+  },
+  {
+    "id": 5,
+    "brand": "Adım",
+    "name": "Mini Işıklı Çocuk Sneaker",
+    "gender": "Çocuk",
+    "category": "Ayakkabı",
+    "type": "Shoes",
+    "art": "sneaker",
+    "scene": "city",
+    "price": 749.99,
+    "favorites": 198,
+    "freeShipping": false,
+    "sizes": ["28", "29", "30", "31", "32", "33"],
+    "colors": [
+      { "name": "Pembe", "main": "#f6b6cf", "mid": "#fff5f9", "sole": "#b986e0", "accent": "#8a4fd1", "lace": "#fff5f9" },
+      { "name": "Mavi", "main": "#7cc4f2", "mid": "#f2fbff", "sole": "#f2b632", "accent": "#1f6fb5", "lace": "#f2fbff" }
+    ]
+  },
+  {
+    "id": 6,
+    "brand": "Kuzey",
+    "name": "Trek Kahverengi Kadın Bot",
+    "gender": "Kadın",
+    "category": "Ayakkabı",
+    "type": "Shoes",
+    "art": "boot",
+    "scene": "forest",
+    "price": 2199.99,
+    "favorites": 301,
+    "freeShipping": true,
+    "sizes": ["36", "37", "38", "39", "40", "41"],
+    "colors": [
+      { "name": "Kahverengi", "main": "#8a5a36", "mid": "#c9a27c", "sole": "#2e241d", "accent": "#6b4427", "lace": "#e8c48a" }
+    ]
+  },
+  {
+    "id": 7,
+    "brand": "Rota",
+    "name": "Basic Haki Erkek Tişört",
+    "gender": "Erkek",
+    "category": "Giyim",
+    "type": "Apparel",
+    "art": "tshirt",
+    "scene": "studio",
+    "price": 349.99,
+    "favorites": 142,
+    "freeShipping": false,
+    "sizes": ["S", "M", "L", "XL", "XXL"],
+    "colors": [
+      { "name": "Haki", "main": "#7c8660", "mid": "#98a27a", "sole": "#5d6547", "accent": "#e9e4d4", "lace": "#5d6547" },
+      { "name": "Beyaz", "main": "#f3f2ee", "mid": "#ffffff", "sole": "#d3d0c8", "accent": "#f26a21", "lace": "#d3d0c8" }
+    ]
+  },
+  {
+    "id": 8,
+    "brand": "Rota",
+    "name": "Kapüşonlu Lila Kadın Sweatshirt",
+    "gender": "Kadın",
+    "category": "Giyim",
+    "type": "Apparel",
+    "art": "hoodie",
+    "scene": "studio",
+    "price": 699.99,
+    "favorites": 267,
+    "freeShipping": true,
+    "sizes": ["XS", "S", "M", "L", "XL"],
+    "colors": [
+      { "name": "Lila", "main": "#b9a6de", "mid": "#a08cc9", "sole": "#6d5a96", "accent": "#d7cbee", "lace": "#f7f4fb" },
+      { "name": "Gri", "main": "#b9bcc0", "mid": "#a0a3a8", "sole": "#5f6368", "accent": "#d4d6d9", "lace": "#f4f5f6" }
+    ]
+  },
+  {
+    "id": 9,
+    "brand": "Liman",
+    "name": "Günlük Hardal Sırt Çantası",
+    "gender": null,
+    "category": "Çanta ve Aksesuar",
+    "type": "Bag",
+    "art": "backpack",
+    "scene": "city",
+    "price": 899.99,
+    "favorites": 174,
+    "freeShipping": true,
+    "sizes": ["Standart"],
+    "colors": [
+      { "name": "Hardal", "main": "#d9a232", "mid": "#c38b21", "sole": "#4a3a1c", "accent": "#e8bb5c", "lace": "#4a3a1c" },
+      { "name": "Siyah", "main": "#2c2c2e", "mid": "#1f1f21", "sole": "#8a8a8c", "accent": "#404043", "lace": "#8a8a8c" }
+    ]
+  },
+  {
+    "id": 10,
+    "brand": "Rota",
+    "name": "Spor Siyah Şapka",
+    "gender": null,
+    "category": "Çanta ve Aksesuar",
+    "type": "Accessory",
+    "art": "cap",
+    "scene": "studio",
+    "price": 249.99,
+    "favorites": 96,
+    "freeShipping": false,
+    "sizes": ["Standart"],
+    "colors": [
+      { "name": "Siyah", "main": "#262626", "mid": "#3a3a3a", "sole": "#1a1a1a", "accent": "#f26a21", "lace": "#1a1a1a" },
+      { "name": "Krem", "main": "#ece4d4", "mid": "#d9cfbb", "sole": "#bfb29a", "accent": "#7c8660", "lace": "#bfb29a" }
+    ]
+  },
+  {
+    "id": 11,
+    "brand": "Pace",
+    "name": "Sprint Mavi Çocuk Spor Ayakkabı",
+    "gender": "Çocuk",
+    "category": "Spor",
+    "type": "Shoes",
+    "art": "sneaker",
+    "scene": "track",
+    "price": 849.99,
+    "favorites": 133,
+    "freeShipping": true,
+    "sizes": ["30", "31", "32", "33", "34", "35"],
+    "colors": [
+      { "name": "Mavi", "main": "#2f7fd6", "mid": "#f1f6fc", "sole": "#16365c", "accent": "#ffd23f", "lace": "#f1f6fc" }
+    ]
+  }
+]

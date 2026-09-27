@@ -10,6 +10,8 @@
         'product_click' => 'blue',
         'add_to_cart' => 'amber',
         'checkout_start' => 'green',
+        // Sent by the market on every page it draws.
+        'page_view' => 'violet',
     ];
 @endphp
 

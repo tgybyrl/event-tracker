@@ -1,6 +1,6 @@
 <x-layouts.app title="Dashboard">
     <x-slot:actions>
-        <x-button href="/events">View all events</x-button>
+        <x-button :href="route('events.index')">View all events</x-button>
     </x-slot:actions>
 
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

@@ -42,7 +42,7 @@ class AuthController extends Controller
 
         // intended() sends them back to the page the auth middleware bounced
         // them off, falling back to the dashboard on a direct visit.
-        return redirect()->intended('/');
+        return redirect()->intended(route('dashboard'));
     }
 
     /**

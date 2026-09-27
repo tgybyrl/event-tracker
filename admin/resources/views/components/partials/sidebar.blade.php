@@ -7,27 +7,27 @@
     $nav = [
         [
             'label' => 'Dashboard',
-            'href' => '/',
-            'active' => ['/'],
+            'href' => route('dashboard'),
+            'active' => ['admin'],
             'icon' => '<rect x="3" y="3" width="7.5" height="7.5" rx="2.5"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2.5"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2.5"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2.5"/>',
         ],
         [
             'label' => 'Events',
-            'href' => '/events',
-            'active' => ['events', 'events/*'],
+            'href' => route('events.index'),
+            'active' => ['admin/events', 'admin/events/*'],
             'icon' => '<path d="M3 12h3.5l2.5-7 4 14 2.5-7H21"/>',
         ],
         [
             'label' => 'Users',
-            'href' => '/users',
-            'active' => ['users', 'users/*'],
+            'href' => route('users.index'),
+            'active' => ['admin/users', 'admin/users/*'],
             'can' => 'manage-users',
             'icon' => '<path d="M15.5 20v-1.5a3.5 3.5 0 0 0-3.5-3.5H7a3.5 3.5 0 0 0-3.5 3.5V20"/><circle cx="9.5" cy="8" r="3.5"/><path d="M20.5 20v-1.5a3.5 3.5 0 0 0-2.7-3.4"/><path d="M15.5 4.7a3.5 3.5 0 0 1 0 6.6"/>',
         ],
         [
             'label' => 'Settings',
-            'href' => '/settings',
-            'active' => ['settings', 'settings/*'],
+            'href' => route('settings.edit'),
+            'active' => ['admin/settings', 'admin/settings/*'],
             'icon' => '<path d="M4 7h7.5M16.5 7H20M4 17h3.5M12.5 17H20"/><circle cx="14" cy="7" r="2.5"/><circle cx="10" cy="17" r="2.5"/>',
         ],
     ];

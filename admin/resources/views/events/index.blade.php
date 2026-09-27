@@ -44,7 +44,7 @@
 
 <x-layouts.app title="Events">
     <x-slot:actions>
-        <x-button href="/">Back to dashboard</x-button>
+        <x-button :href="route('dashboard')">Back to dashboard</x-button>
     </x-slot:actions>
 
     <x-card>

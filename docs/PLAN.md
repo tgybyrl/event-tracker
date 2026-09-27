@@ -431,16 +431,17 @@ Nine commits, `ab6a8a7`..`b528b0d`, one per step, plus the docs commit that wrot
 
 # Next (smallest steps, in order)
 
-1. Take "Open questions for mentor" to the mentor. The first five decide the
-   next steps; the rest can wait.
-2. **Demo market page** — listing, product detail, add to cart — sending real
+1. **Demo market page** — listing, product detail, add to cart — sending real
    events to `POST /api/v1/events` instead of the synthetic dataset. Its three
    pages map onto the `event_source` values `listing` / `detail` / `cart`.
-   Needs CORS on `POST` in Go. Funnels need a `session_id`, which waits for the
-   mentor's answer on the schema.
-3. **Event ingestion + Redis**, once the mentor has said what Redis is for and
-   whether a lost queued event is acceptable (Lists versus Streams). A worker
-   binary would go in `backend/cmd/worker`.
+   Needs CORS on `POST` in Go. `session_id` travels **inside `event_payload`**
+   until the mentor answers the schema question. Own branch, planned first.
+2. **Event ingestion + Redis Streams.** `POST` hands the event to a Redis
+   Stream and answers at once; a worker in `backend/cmd/worker` reads it with a
+   consumer group, inserts into MySQL, then acks. The market page does not
+   change when this lands — same URL, same JSON.
+3. Take the remaining "Open questions for mentor" to the mentor. None of them
+   blocks 1 or 2; the schema ones block `session_id` becoming a column.
 4. Write the two owed answers into `DECISIONS.md`: "why Gin" and "why sqlx".
    Both were answered to the mentor out loud on 2026-09-22; every field in both
    entries still reads `TODO`.
@@ -479,17 +480,24 @@ Log in with `manager@example.com` / `password` (sees Users) or
 
 # Open questions for mentor
 
-Ordered: the first five decide what gets built next.
+**Decided without the mentor on 2026-09-28** — ordering and reversible
+choices, not schema. Tell the mentor; change course if they disagree:
 
-1. **Next step:** Redis first, or a real event source first (a demo market
-   page with a small tracker script sending real clicks)?
-2. **What is Redis for here?** My reading: `POST` writes to Redis and answers
-   at once, a separate worker inserts into MySQL. Or is it for cache/counters?
-3. **May a queued event be lost if the worker crashes?** Decides Redis Lists
-   (simpler, can lose one) versus Streams (consumer groups + ack; also closer
-   to Kafka later).
-4. **`session_id`:** add one so events can be tied into a funnel
-   (click → cart → checkout)? As its own column, or a payload key?
+- **Market page before Redis.** Redis is easier to see working under real
+  clicks than under a replayed synthetic file, and the market page does not
+  change when Redis lands.
+- **Redis is a queue** between `POST` and MySQL, not a cache.
+- **Streams, not Lists.** A List loses the event a worker had popped when it
+  crashes; a Stream keeps it until the worker acks. Moving from Streams to
+  Lists later is easy, the other way less so, and Streams' consumer groups
+  are the concept Kafka is built on.
+- **`session_id` goes in `event_payload` for now**, not a column: no schema
+  change, nothing to migrate back if the mentor wants it elsewhere.
+
+Still for the mentor — schema changes are expensive to undo:
+
+4. **`session_id` as a column?** It lives in the payload for now (above). A
+   column makes funnels a plain `GROUP BY session_id`.
 5. **"Specific access":** screen-based (what a worker can do — built that way)
    or row-level (a worker sees only some `event_domain` values)? Row-level is a
    join table plus one `where`, on top of what exists.

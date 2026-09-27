@@ -9,9 +9,25 @@ Projede çalıştırdığımız komutlar. Yeni komut kullandıkça buraya eklene
 Üç terminal gerekiyor, bu sırayla:
 
 ```
-docker compose up -d db          # 1. MySQL
+docker compose up -d             # 1. MySQL + Caddy proxy (port 80)
 cd backend && go run ./cmd/api   # 2. Go servisi   → :8080
 cd admin && php artisan serve    # 3. Laravel      → :8000
+```
+
+Sonra her şey tek adreste, **http://localhost**:
+
+| Adres | Ne |
+|---|---|
+| `http://localhost/market/list` | Demo mağaza (pasaj). Tıklamalar event olarak gider |
+| `http://localhost/admin` | Panel |
+| `http://localhost/api/v1/events` | Go API (GET için anahtar gerekir) |
+
+`:8000` ve `:8080` hâlâ doğrudan da açılabilir, ama asıl giriş kapısı proxy.
+
+```
+docker compose up -d proxy                              # sadece proxy'yi başlat
+docker compose exec proxy caddy reload --config /etc/caddy/Caddyfile   # Caddyfile değişince
+docker compose logs -f proxy                            # proxy loglarını izle
 ```
 
 Panelde geliştirme yapıyorsan dördüncü bir terminalde Vite de açık olmalı:

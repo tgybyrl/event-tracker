@@ -33,6 +33,12 @@ stopped reading MySQL for events and calls Go's read API instead, and moved
 its own tables into a separate `panel_db` with a MySQL user that cannot see
 `events_db`. `POST` moved to `/api/v1/events`.
 
+On 2026-09-28 (branch `market`, see "Done on 2026-09-28"): everything answers
+on **one address, http://localhost**, behind a Caddy reverse proxy — the shop
+at `/market`, the API at `/api`, the panel at `/admin` — and a demo shop sends
+**real events** from real clicks. The synthetic generator still exists but is
+no longer the main source.
+
 Phases D and E were both built on the *provisional* screen-based access model
 — the mentor has still not answered the "specific access" question. If the
 answer turns out to be row-level, that work stands and a join table plus one
@@ -429,42 +435,68 @@ Nine commits, `ab6a8a7`..`b528b0d`, one per step, plus the docs commit that wrot
   panel accounts were copied across unchanged and the nine Laravel tables
   dropped from `events_db`, which now holds only `events`.
 
+# Done on 2026-09-28 (branch `market`)
+
+- **Panel under `/admin`.** `Route::prefix('admin')` around every route; the
+  eleven hand-written paths (sidebar, two buttons, the post-login fallback)
+  now go through `route(...)`.
+- **One address: Caddy.** `proxy/Caddyfile`, run as the `proxy` service in
+  compose (`caddy:2.11.4-alpine`, port 80). `/api/*` → Go :8080, `/admin*` and
+  `/build/*` → Laravel :8000, `/market/*` → static files, `/` →
+  `/market/list`, anything else 404. The `proxy/` folder is mounted, not the
+  single file — a single-file mount kept serving the old Caddyfile after an
+  edit. Laravel trusts `X-Forwarded-*` so its links say `localhost/admin`.
+  Market and API share an origin, so Go needed **no CORS code**.
+- **The shop, "pasaj".** `market/`: plain HTML/CSS/JS, no build step.
+  Listing (reyon / category / search from the URL), product page (colour
+  swatches, size grid, a size is required), cart (quantity, remove, "complete
+  order" with no payment). Layout follows the flo.com.tr reference the user
+  shared, but no logo, photo or real brand is copied: products are SVG
+  drawings (`js/art.js`) with invented brands, read from `products.json`.
+- **The tracker.** `market/js/tracker.js` listens to the shop's browser
+  events and posts `page_view`, `product_click`, `add_to_cart` and
+  `checkout_start`, with `session_id` inside `event_payload` (30 idle minutes
+  end a session). A product click holds navigation up to 300 ms so the event
+  is not lost. The **Events** button shows every event the tab sent and the
+  API's answer. Checked end to end by driving headless Chrome: six clicks,
+  six 201s, six rows with one session id.
+- `page_view` got its own badge colour in the panel; the filter and the
+  dashboard picked the new action up with no code change.
+
 # Next (smallest steps, in order)
 
-1. **Demo market page** — listing, product detail, add to cart — sending real
-   events to `POST /api/v1/events` instead of the synthetic dataset. Its three
-   pages map onto the `event_source` values `listing` / `detail` / `cart`.
-   Needs CORS on `POST` in Go. `session_id` travels **inside `event_payload`**
-   until the mentor answers the schema question. Own branch, planned first.
-2. **Event ingestion + Redis Streams.** `POST` hands the event to a Redis
+1. **Event ingestion + Redis Streams.** `POST` hands the event to a Redis
    Stream and answers at once; a worker in `backend/cmd/worker` reads it with a
-   consumer group, inserts into MySQL, then acks. The market page does not
-   change when this lands — same URL, same JSON.
-3. Take the remaining "Open questions for mentor" to the mentor. None of them
-   blocks 1 or 2; the schema ones block `session_id` becoming a column.
-4. Write the two owed answers into `DECISIONS.md`: "why Gin" and "why sqlx".
+   consumer group, inserts into MySQL, then acks. The market does not change
+   when this lands — same URL, same JSON.
+2. Take the remaining "Open questions for mentor" to the mentor. None of them
+   blocks 1; the schema ones block `session_id` becoming a column.
+3. Write the two owed answers into `DECISIONS.md`: "why Gin" and "why sqlx".
    Both were answered to the mentor out loud on 2026-09-22; every field in both
    entries still reads `TODO`.
 *(`user_ip` from body vs. `c.ClientIP()` was item 6 and is now decided — keep
 the body value. Reasoning moved to Known shortcuts.)*
 
-# How to run the panel
+# How to run everything
 
 ```
-docker compose up -d db              # MySQL must be up
-cd backend && go run ./cmd/api       # the panel reads events from here
+docker compose up -d                 # MySQL + the Caddy proxy on port 80
+cd backend && go run ./cmd/api       # :8080 — the shop posts here, the panel reads here
 cd admin && php artisan migrate      # once — panel tables in panel_db
 cd admin && php artisan db:seed      # once, on an empty panel_db — manager + worker
 cd admin && npm run dev              # Vite, leave running
-cd admin && php artisan serve        # http://127.0.0.1:8000
+cd admin && php artisan serve        # :8000 — reached through the proxy
 ```
+
+Then everything is on **http://localhost**: the shop at `/market/list`, the
+panel at `/admin`, the API at `/api/v1`.
 
 Keys that must match across `.env` files: `EVENTS_API_KEY` (backend, admin)
 and `PANEL_DB_PASSWORD` (root) = `DB_PASSWORD` (admin). Each directory has a
 `.env.example`.
 
 Log in with `manager@example.com` / `password` (sees Users) or
-`worker@example.com` / `password` (403 on `/users`).
+`worker@example.com` / `password` (403 on `/admin/users`).
 
 # Done / I can explain this
 
@@ -516,6 +548,22 @@ Still for the mentor — schema changes are expensive to undo:
     time instead?
 
 # Known shortcuts (debt from the demo days — pay down)
+
+- Laravel trusts `X-Forwarded-*` from **any** address (`trustProxies(at:
+  '*')`). Safe only while `:8000` is reachable from this machine alone; a real
+  deployment names the proxy's address instead.
+- Every market event is **anonymous** (`user_id` null): the shop has no login.
+  The dashboard's anonymous share now mostly measures the shop, not a tracking
+  fault.
+- Market events carry `event_domain = localhost` locally — the tracker sends
+  the page's hostname, which is right in production and odd on a laptop.
+- The tracker sends the **browser's clock** as `event_timestamp`. Go refuses
+  anything more than a minute ahead, but a client clock running behind is
+  stored as is.
+- `POST /api/v1/events` is open to anyone who can reach the address — see
+  mentor question 10. The shop proves a browser can post; so can anything else.
+- Products live in `market/products.json`; nothing ties `product_id` in an
+  event to a products table, because there is none.
 
 - DSN host hardcoded to `127.0.0.1:3306` in `config/db.go`.
 - `event_id` comes from the client; no server-side UUID. It is checked to

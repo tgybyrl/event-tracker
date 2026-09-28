@@ -18,7 +18,7 @@ Sonra her şey tek adreste, **http://localhost**:
 
 | Adres | Ne |
 |---|---|
-| `http://localhost/market/list` | Demo mağaza (pasaj). Tıklamalar event olarak gider |
+| `http://localhost/market/list` | Demo mağaza (BLO). Tıklamalar event olarak gider |
 | `http://localhost/admin` | Panel |
 | `http://localhost/api/v1/events` | Go API (GET için anahtar gerekir) |
 

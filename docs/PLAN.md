@@ -447,7 +447,7 @@ Nine commits, `ab6a8a7`..`b528b0d`, one per step, plus the docs commit that wrot
   single file — a single-file mount kept serving the old Caddyfile after an
   edit. Laravel trusts `X-Forwarded-*` so its links say `localhost/admin`.
   Market and API share an origin, so Go needed **no CORS code**.
-- **The shop, "pasaj".** `market/`: plain HTML/CSS/JS, no build step.
+- **The shop, "BLO"** (first called "pasaj"; the name is `SHOP_NAME` in `market/js/shop.js`). `market/`: plain HTML/CSS/JS, no build step.
   Listing (reyon / category / search from the URL), product page (colour
   swatches, size grid, a size is required), cart (quantity, remove, "complete
   order" with no payment). Layout follows the flo.com.tr reference the user

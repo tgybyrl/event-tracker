@@ -6,6 +6,12 @@
 // browser's localStorage, so it survives reloads and page changes but is
 // private to this browser.
 
+// The shop's name, shown in the header, the footer and every tab title.
+// Change it here and nowhere else.
+const SHOP_NAME = 'BLO';
+
+// Browser storage keys. They keep the shop's first name, "pasaj": they are
+// never shown, and renaming them would empty every existing cart and login.
 const CART_KEY = 'pasaj.cart';
 
 // The demo login. There are no passwords and no accounts on a server: the
@@ -145,7 +151,7 @@ function renderChrome(params) {
         </div>
         <header class="masthead">
             <div class="container masthead__inner">
-                <a class="wordmark" href="/market/list">pasaj</a>
+                <a class="wordmark" href="/market/list">${SHOP_NAME}</a>
                 <nav class="gender-nav" aria-label="Reyon">
                     ${GENDERS.map((g) => `<a href="/market/list?gender=${encodeURIComponent(g)}"${g === gender ? ' aria-current="page"' : ''}>${g}</a>`).join('')}
                 </nav>
@@ -170,7 +176,7 @@ function renderChrome(params) {
 
     document.getElementById('site-footer').innerHTML = `
         <div class="container footer__inner">
-            <span class="wordmark wordmark--small">pasaj</span>
+            <span class="wordmark wordmark--small">${SHOP_NAME}</span>
             <p>Bu bir demo mağazadır. Ürünler ve markalar hayalidir, sipariş ve ödeme alınmaz.</p>
         </div>`;
 
@@ -260,7 +266,7 @@ function renderProduct(products) {
         return null;
     }
 
-    document.title = `${product.brand} ${product.name} | pasaj`;
+    document.title = `${product.brand} ${product.name} | ${SHOP_NAME}`;
 
     // "Most favourited in its category" is computed, not made up: it shows
     // only on the product with the highest favourites count in its category.
@@ -462,6 +468,9 @@ function renderCart(products) {
 
 async function start() {
     const params = new URLSearchParams(location.search);
+    // The HTML files carry only the page's own name ("Sepetim"); the shop's
+    // name is added here, so it is written in one place.
+    document.title = `${document.title} | ${SHOP_NAME}`;
     renderChrome(params);
 
     const products = await fetch('/market/products.json').then((r) => r.json());

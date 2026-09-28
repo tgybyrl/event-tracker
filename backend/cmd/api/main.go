@@ -14,6 +14,7 @@ import (
 func main() {
 
 	config.ConnectDB()
+	config.LoadDisplayLocation()
 
 	// Fail closed: with no key configured the read endpoints would have
 	// nothing to compare against, so refuse to start instead of serving them

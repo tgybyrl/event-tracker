@@ -1,76 +1,75 @@
 # Project
 
-Event tracker/manager. Internship project at FLO Group.
+Event tracker. Internship project at FLO Group, ending in a presentation to
+my mentor — I have to be able to explain every part of it.
 
 **Read `docs/PLAN.md` before doing anything.** This file holds the rules;
-`docs/PLAN.md` holds the state — what is done, what is next, and why.
+`docs/PLAN.md` holds the state — what exists, what is next, and why.
+`docs/HISTORY.md` is the build log; read it when you need to know why
+something is the way it is.
 
-Stack (mentor's build order, do NOT jump ahead):
+Build order (mentor's, do not jump ahead without asking):
 
-- [x] Go + Gin
+- [x] Go + Gin — event API
 - [x] MySQL
-- [ ] Admin panel (PHP / Laravel) ← current
-- [ ] Event data ingestion + Redis
+- [x] Admin panel (PHP / Laravel)
+- [x] Demo market that sends real events (added 2026-09-28)
+- [ ] Event ingestion + Redis Streams ← next
 - [ ] (later, maybe) swap Redis for Kafka
-
-`docs/PLAN.md` numbers things by the mentor's own 1–6 curriculum, which is
-finer-grained than this list. That file wins on status.
 
 ## Who I am
 
-Backend intern. I know Python. I do NOT know Go, Gin, Redis, MySQL, or PHP.
-Everything here is new to me. I have to be able to explain every line of
-this codebase to my mentor.
+Backend intern. I came in knowing Python and none of Go, Gin, Redis, MySQL,
+PHP or Laravel.
 
-## Hard rules
+## How we work (since 2026-09-23)
 
-- DO NOT create or edit source files unless I say "write it" explicitly.
-  Default mode is: explain, then I type it.
-- When I need new code, give me a skeleton with TODOs and signatures, not
-  a working implementation. Function bodies are mine.
-- Reading files, running the app, reading errors, and grepping is always
-  allowed. Writing is not.
+- **You write the code.** I say what I want; you plan it, build it and
+  verify it by running it (curl, SQL, headless browser) before calling it
+  done.
+- **Explain every step after it lands**: what the code does, why it is built
+  that way, with `file:line` pointers. Plain language, as to someone seeing
+  it for the first time. **No Python or Django analogies.** I will also ask
+  for detailed walkthroughs of whole areas before the presentation.
+- **Tests are mine.** Do not add Go or Laravel tests unless I ask. Say where
+  a test would be worth writing.
+- Bigger work gets a plan first (plan mode), and I approve it.
+- Follow `docs/PLAN.md`'s roadmap. Improvising beyond it is fine — ask me
+  first.
+- Keep `docs/PLAN.md` current as part of the work, so a fresh session after
+  `/clear` can pick up where we stopped.
+
+## Rules that still hold
+
 - No new dependencies without telling me what problem it solves and what
   it would take to do it by hand.
-- No abstractions I didn't ask for. No interfaces, no repository layer,
+- No abstractions nothing asked for. No interfaces, no repository layer,
   no config package until something concretely hurts.
-- Don't jump ahead in the build order. If a step needs something from a
-  later phase, say so and stub it.
-
-## How to teach
-
-- I come from Python. Anchor new Go concepts to Python, then say where
-  the analogy breaks.
-- Explain before code. Shortest working version first, then one layer at
-  a time.
-- When I paste broken code or an error: point me at the line and ask what
-  I expected. Don't fix it for me.
-- When I ask "how do I X", ask what I've tried first.
+- Data model and DB schema changes go to the mentor first (see "Open
+  questions for mentor" in PLAN.md). They are expensive to undo.
 - If my design is wrong, say so directly. Don't soften it.
+- When I paste broken code or an error: point me at the line and ask what
+  I expected. Don't fix it silently.
 
-## Exceptions (I'll say these out loud)
+## Words I use
 
-- "write it" → you implement it fully. Used for boilerplate I've already
-  written by hand once before.
-- "just explain" → no code at all, prose only.
+- "write it" → implement it fully.
+- "just explain" → no code, prose only.
 - "review" → critique what I wrote, no rewriting.
 
 ## Style
 
-Short answers. No preamble, no summaries of what you just did, no
+Chat replies in Turkish, technical terms in English. `docs/` and code
+comments in English. Short answers unless I ask for depth. No preamble, no
 encouragement.
 
 ## Git
 
-- Try to not run git commands until i ask. Commits are mine, until otherwise.
-- I'm new to git and bad at commit hygiene. Help me with:
-  - When to commit: if a change is getting too big to explain in one
-    sentence, say so and tell me to commit what works.
-  - What to split: if `git diff` shows two unrelated things, tell me
-    which files/hunks belong in which commit.
-  - Git mechanics: I will ask things like "how do I undo the last
-    commit" or "what does staging mean". Explain, don't run it.
-- Commit messages: I write the first draft, always. Then you critique it.
-  Say what's vague or missing. Do NOT write the message for me, until i ask — tell me what's wrong with mine instead.
-  - Repo is mine, solo, commit to main. No branches, no PRs, until i ask.
-  - Push after every commit. The remote history is my work record.
+- Work on a **branch** per piece of work, never straight on `main`.
+- **One commit per step**, pushed right away — if I dislike a step, it can
+  be undone on its own. The remote history is my work record.
+- Commit messages: `type(scope): summary`, then a body that says why.
+- **No `Co-Authored-By` or `Claude-Session` trailers.**
+- **Merge into `main` only when I say so** (fast-forward), then push.
+- I still ask git mechanics questions ("how do I undo the last commit",
+  "what is staging"): explain, don't just run it.

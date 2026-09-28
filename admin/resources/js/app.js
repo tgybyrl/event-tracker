@@ -37,3 +37,48 @@ filterToggle?.addEventListener('click', () => {
     filterPanel.hidden = !filterPanel.hidden;
     filterToggle.setAttribute('aria-expanded', String(!filterPanel.hidden));
 });
+
+// Chart tooltips. Any element inside a .chart with a data-tip attribute shows
+// that text next to the pointer. One tooltip element serves every chart.
+const chartTip = document.createElement('div');
+chartTip.className = 'chart-tip';
+chartTip.hidden = true;
+document.body.append(chartTip);
+
+document.addEventListener('pointerover', (event) => {
+    const target = event.target.closest?.('.chart [data-tip]');
+    if (!target) return;
+    chartTip.textContent = target.dataset.tip;
+    chartTip.hidden = false;
+});
+
+document.addEventListener('pointermove', (event) => {
+    if (chartTip.hidden) return;
+    chartTip.style.left = `${event.pageX}px`;
+    chartTip.style.top = `${event.pageY}px`;
+});
+
+document.addEventListener('pointerout', (event) => {
+    if (event.target.closest?.('.chart [data-tip]')) chartTip.hidden = true;
+});
+
+document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') chartTip.hidden = true;
+});
+
+// Range switch on a chart card: buttons with data-range pick which
+// data-range-panel is shown. Both panels are rendered by the server, so
+// switching needs no request.
+document.querySelectorAll('[data-range-switch]').forEach((group) => {
+    const buttons = group.querySelectorAll('[data-range]');
+    const panels = document.querySelectorAll(`[data-range-panel][data-range-for="${group.dataset.rangeSwitch}"]`);
+
+    buttons.forEach((button) => {
+        button.addEventListener('click', () => {
+            buttons.forEach((b) => b.setAttribute('aria-pressed', String(b === button)));
+            panels.forEach((panel) => {
+                panel.hidden = panel.dataset.rangePanel !== button.dataset.range;
+            });
+        });
+    });
+});

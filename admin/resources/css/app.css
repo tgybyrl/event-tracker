@@ -66,3 +66,19 @@
         scroll-behavior: auto !important;
     }
 }
+
+/* Chart tooltip (resources/js/app.js). Sits above the pointer and never
+   catches it, so moving along the columns stays smooth. */
+.chart-tip {
+    position: absolute;
+    z-index: 70;
+    transform: translate(-50%, calc(-100% - 12px));
+    padding: 6px 10px;
+    border-radius: 8px;
+    background: var(--color-ink);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    pointer-events: none;
+}

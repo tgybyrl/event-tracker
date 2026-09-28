@@ -177,7 +177,7 @@ Laravel'i `:8000`'de başlatır.
 ```
 php artisan migrate
 ```
-Bekleyen migration'ları çalıştırır. **Sadece Laravel'in kendi tablolarını** yönetir (`users`, `sessions`, `cache`, `jobs`). `events` tablosu Go'nun, ona migration yazılmaz.
+Bekleyen migration'ları çalıştırır. **Sadece Laravel'in kendi tablolarını** yönetir (`users`, `sessions`, `cache`, `jobs`), hepsi `panel_db` içinde. `events` tablosu Go'nun, ona migration yazılmaz.
 
 ```
 php artisan migrate:status
@@ -192,13 +192,15 @@ Tanımlı tüm route'ları listeler. Filtrelemek için: `php artisan route:list 
 ```
 php artisan tinker
 ```
-Laravel yüklenmiş bir REPL açar. Python'daki `python -i` gibi, ama tüm model ve config hazır gelir.
+Laravel'in tamamı yüklenmiş bir komut satırı açar: modelleri, config'i ve helper'ları doğrudan çağırabilirsin.
 
 Tek seferlik sorgu için interaktif girmeden:
 
 ```
-php artisan tinker --execute="echo App\Models\Event::count();"
+php artisan tinker --execute="echo App\Models\User::count();"
 ```
+
+Panelde `events` için model yok, event verisi Go API'den geliyor. Event'leri saymak için `curl` ya da MySQL client kullan.
 
 ### Cache temizleme
 
@@ -223,7 +225,9 @@ php artisan view:cache && php artisan view:clear
 ```
 **Tüm** Blade dosyalarını derler — syntax hatası varsa burada patlar. `view:cache` production içindir, o yüzden hemen ardından `view:clear` ile geri al.
 
-### Kod üretme (phase D/E'de lazım olacak)
+### Kod üretme
+
+Laravel'in hazır iskelet dosyası üreten komutları. Dosyayı doğru klasöre, doğru namespace ile koyar:
 
 ```
 php artisan make:controller UserController --resource
@@ -281,6 +285,15 @@ Proxy container'ı `market/` ve `proxy/` klasörlerini diskten bağlıyor. Git b
 docker compose up -d --force-recreate proxy
 ```
 
+**Market'te yaptığım değişiklik görünmüyor / eski davranış devam ediyor**
+
+Tarayıcı `shop.js` ya da `tracker.js`'in eski kopyasını kullanıyor olabilir. Caddy artık her market dosyasında tarayıcıya "önce bana sor" diyor (`Cache-Control: no-cache`), ama bu ayardan önce indirilmiş kopyalar için bir kez temizlemek gerekir:
+
+1. Market sayfası açıkken DevTools'u aç (**Cmd + Option + I**).
+2. Tarayıcının yenile (⟳) butonuna **sağ tıkla** → **"Empty Cache and Hard Reload"**.
+
+Sepeti, session'ı ve demo girişi de sıfırlamak istersen: DevTools → **Application** → **Storage** → **Clear site data**.
+
 **Panelde "The event service is not answering" (503)**
 
 Panel event verisini Go API'den alıyor. Go servisi ayakta mı (`cd backend && go run ./cmd/api`)? `admin/.env` içindeki `EVENTS_API_KEY`, `backend/.env` içindekiyle aynı mı? Gerçek hata `admin/storage/logs/laravel.log` dosyasında.
@@ -311,11 +324,20 @@ git push                        # remote'a gönder
 git log --oneline -10           # son 10 commit
 ```
 
-Phase başına branch (PLAN.md kuralı):
+Her iş kendi branch'inde yapılır, onaylanınca `main`'e alınır (CLAUDE.md kuralı):
 
 ```
-git switch -c panel-phase-c     # yeni branch aç ve geç
-git switch main                 # main'e dön
-git merge panel-phase-c         # phase bitince birleştir
+git switch -c redis-streams            # yeni branch aç ve geç
+git push -u origin redis-streams       # branch'i remote'a gönder (ilk seferde -u)
+git switch main                        # main'e dön
+git merge --ff-only redis-streams      # birleştir; main geride kalmışsa reddeder
 git push
+```
+
+`--ff-only`: `main` sadece ileri kaydırılır, ayrı bir merge commit'i oluşmaz. `main`'de branch'te olmayan bir commit varsa merge reddedilir ve hiçbir şey karışmaz.
+
+Bir commit'i geri almak:
+
+```
+git revert <commit>             # o commit'in tersini yapan yeni bir commit ekler; push'lanmış commit'ler için güvenli yol
 ```

@@ -82,6 +82,9 @@ What I tried: TODO (single root file + run app from root; symlink; export
 What I chose and why: two copies — `./.env` for compose, `backend/.env`
   for the app — kept in sync by hand. Simplest to explain; no symlink
   concept, no code change.
+  *(Since 2026-09-25 there are three — root, `backend/`, `admin/` — each
+  with a committed `.env.example` naming its keys. The values that must
+  match across files are listed in PLAN.md's "How to run everything".)*
 What I'd do differently: TODO
 
 ## 2026-09-21 — Panel access model: screen-based, and phases D/E swapped
@@ -151,4 +154,114 @@ What I chose and why: plain `VARCHAR(20)`, defaulting to `'worker'`, with a
   only because the seeder is currently the one thing that writes the column;
   phase E's `FormRequest` adds `in:manager,worker`. If a third role ever
   appears, that is the moment the enum earns its place.
+What I'd do differently: TODO
+
+## 2026-09-23 — Go binaries under `cmd/`, no `pkg/`
+
+Problem: `backend/` held three `package main` directories in three shapes
+  (the API at the root, two tools under `tools/`), and GitHub examples all
+  seemed to use `pkg/`.
+What I tried: TODO
+What I chose and why: `cmd/api`, `cmd/generate`, `cmd/send` — Go's own
+  module-layout guide for a module with several commands. Each `package
+  main` directory is its own binary, so three `main.go` files were never
+  wrong, only inconsistent. No `pkg/`: it means "importable by other
+  projects", and nothing imports this module; it is also not an official
+  convention. No `internal/` either, for the same reason.
+What I'd do differently: TODO
+
+## 2026-09-23 — `event_timestamp` is the client's time
+
+Problem: the column recorded when the row was *inserted*, not when the
+  event *happened*. The INSERT left it out and the DB default filled it.
+What I tried: TODO
+What I chose and why: accept the client's timestamp. The Go field is
+  `*time.Time` — a plain `time.Time` cannot say "not sent", its zero value
+  is year 0001 — and the INSERT uses `COALESCE(?, CURRENT_TIMESTAMP)`, so a
+  body without one still gets the database clock. Real trackers receive
+  events late (offline queues, batched mobile sends). Timestamps more than
+  a minute in the future are refused.
+What I'd do differently: TODO
+
+## 2026-09-25 — The panel reads events through the Go API
+
+Problem: two programs read the same table. Every coming change to
+  `events` (`session_id`, indexes, `received_at`) could break the panel,
+  and the panel connected as `root`, able to write to Go's table.
+What I tried: TODO
+What I chose and why: Go serves `GET /api/v1/events`, `/facets` and
+  `/stats`; the panel calls them through one class, `EventsApi`, and its
+  `Event` model is deleted. The panel now depends on a JSON shape, not on
+  the table, so Go can change the table freely. The reads sit behind an API
+  key (constant-time compare, server refuses to start without one); `POST`
+  stays public because browsers must be able to send events.
+  Cost: the filter rules exist twice (panel form + Go), and the panel shows
+  a 503 page when Go is down.
+What I'd do differently: TODO
+
+## 2026-09-25 — The panel gets its own database and MySQL user
+
+Problem: Laravel's tables sat next to `events` in `events_db`, and the
+  panel connected as `root`.
+What I tried: TODO
+What I chose and why: `panel_db` plus a `panel` user with rights on
+  `panel_db` only — `SELECT` on `events_db.events` is denied. Created by
+  `db/panel-db.sh`, which docker compose runs on a fresh volume together
+  with `schema.sql`. The three existing accounts were copied across with
+  their password hashes, so nobody had to reset a password.
+What I'd do differently: TODO
+
+## 2026-09-28 — One address behind Caddy
+
+Problem: the shop, the API and the panel ran on three ports. A shop page
+  on one port posting to an API on another is cross-origin, so the browser
+  would need CORS headers from Go.
+What I tried: TODO
+What I chose and why: a reverse proxy on port 80 routes by path: `/market`
+  (static files), `/api` (Go), `/admin` (Laravel, now under that prefix).
+  Same origin for shop and API, so no CORS code at all. Caddy over nginx
+  because its config is short enough to read in one sitting; all routing
+  lives in `proxy/Caddyfile`, so switching later touches one file.
+What I'd do differently: TODO
+
+## 2026-09-28 — Market before Redis; Redis Streams over Lists
+
+Problem: the build order says Redis next, but every event was synthetic —
+  a queue under a replayed file shows that it runs, not what it is for.
+What I tried: TODO
+What I chose and why: build the demo market first, so Redis lands under
+  real clicks; the market does not change when Redis arrives (same URL,
+  same JSON). For Redis itself, **Streams**: a List loses the event a
+  worker had popped if it crashes before the INSERT, a Stream keeps it until
+  the worker acknowledges it. Consumer groups are also the idea Kafka is
+  built on, which is the later step in the build order.
+What I'd do differently: TODO
+
+## 2026-09-28 — `session_id` inside the payload; a new session per person
+
+Problem: single events cannot answer "what did this visitor do in one
+  visit" — funnels need something tying events together.
+What I tried: TODO
+What I chose and why: the tracker keeps a `session_id` in localStorage and
+  sends it inside `event_payload`, not as a column: a column is a schema
+  change, and those wait for the mentor. A session ends after 30 idle
+  minutes, or when the person changes (logout, or another customer logs
+  in). Logging in from anonymous keeps the session, so what someone did
+  before logging in stays attached to them (identity stitching).
+  Cost: querying it means reading JSON (`event_payload->'$.session_id'`),
+  which no index helps.
+What I'd do differently: TODO
+
+## 2026-09-28 — `user_ip`: the body wins, otherwise the connection
+
+Problem: the 2026-09-22 rule was "body only". Then real browsers started
+  sending events, and a browser cannot know its own public address, so every
+  market event had `user_ip` NULL.
+What I tried: TODO
+What I chose and why: keep a body value when there is one (server-to-server
+  senders post someone else's address), otherwise `c.ClientIP()`. Behind
+  Caddy that has to come from `X-Forwarded-For`, and only the proxy may set
+  it: `SetTrustedProxies` names it (`TRUSTED_PROXIES`, default `127.0.0.1`,
+  where Docker Desktop delivers the proxy's requests).
+  Open cost: the IP is personal data under KVKK and is stored in full.
 What I'd do differently: TODO

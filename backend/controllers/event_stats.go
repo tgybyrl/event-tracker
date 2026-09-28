@@ -32,6 +32,16 @@ type dayBucket struct {
 	Previous  int    `json:"previous"`
 }
 
+// One row of "Top products". Name and Brand are empty for products seen
+// only in events sent before the tracker started including them.
+type productCount struct {
+	ProductID   int    `db:"product_id" json:"product_id"`
+	Name        string `db:"name" json:"name"`
+	Brand       string `db:"brand" json:"brand"`
+	Clicks      int    `db:"clicks" json:"clicks"`
+	AddedToCart int    `db:"added_to_cart" json:"added_to_cart"`
+}
+
 type funnelStep struct {
 	Step     string `json:"step"`
 	Sessions int    `json:"sessions"`
@@ -54,6 +64,8 @@ type eventStats struct {
 	Hourly   []hourBucket `db:"-" json:"hourly"`
 	Daily    []dayBucket  `db:"-" json:"daily"`
 	Funnel   []funnelStep `db:"-" json:"funnel"`
+
+	TopProducts []productCount `db:"-" json:"top_products"`
 }
 
 // EventStats answers GET /api/v1/events/stats.
@@ -112,6 +124,11 @@ func EventStats(c *gin.Context) {
 	}
 	if s.Funnel, err = funnelSteps(weekAgo); err != nil {
 		log.Println("event stats funnel:", err)
+		c.JSON(500, gin.H{"error": "could not read stats"})
+		return
+	}
+	if s.TopProducts, err = topProducts(weekAgo); err != nil {
+		log.Println("event stats top products:", err)
 		c.JSON(500, gin.H{"error": "could not read stats"})
 		return
 	}
@@ -250,4 +267,31 @@ func funnelSteps(since time.Time) ([]funnelStep, error) {
 		{Step: "added_to_cart", Sessions: f.Added},
 		{Step: "started_checkout", Sessions: f.Checked},
 	}, nil
+}
+
+// The five products clicked most since `since`, with how often each was
+// added to the cart. Like the funnel it counts market visits only (events
+// with a session_id), so the synthetic dataset does not mix in.
+//
+// product_id, name and brand live inside event_payload, so they are read
+// with JSON_EXTRACT. MAX() picks a name from any event that carried one:
+// events sent before the tracker included names have none, and MAX skips
+// NULL. IFNULL turns "no name ever seen" into an empty string.
+func topProducts(since time.Time) ([]productCount, error) {
+	products := []productCount{}
+	err := config.DB.Select(&products, `SELECT
+			CAST(JSON_UNQUOTE(JSON_EXTRACT(event_payload, '$.product_id')) AS UNSIGNED) AS product_id,
+			IFNULL(MAX(JSON_UNQUOTE(JSON_EXTRACT(event_payload, '$.product_name'))), '') AS name,
+			IFNULL(MAX(JSON_UNQUOTE(JSON_EXTRACT(event_payload, '$.brand'))), '') AS brand,
+			COUNT(CASE WHEN event_action = 'product_click' THEN 1 END) AS clicks,
+			COUNT(CASE WHEN event_action = 'add_to_cart' THEN 1 END) AS added_to_cart
+		FROM events
+		WHERE event_timestamp >= ?
+			AND event_action IN ('product_click', 'add_to_cart')
+			AND JSON_EXTRACT(event_payload, '$.session_id') IS NOT NULL
+			AND JSON_EXTRACT(event_payload, '$.product_id') IS NOT NULL
+		GROUP BY product_id
+		ORDER BY clicks DESC, added_to_cart DESC, product_id ASC
+		LIMIT 5`, since)
+	return products, err
 }

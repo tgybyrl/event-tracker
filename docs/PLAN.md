@@ -61,17 +61,47 @@ Improvising outside this list is fine — ask first.
 
 ## 1. Redis ← next
 
-1. **Ingestion queue — Redis Streams + worker.** `POST` validates, `XADD`s
-   the event to a stream and answers at once; a new `backend/cmd/worker`
-   reads with a consumer group, inserts into MySQL, then `XACK`s. Worth
-   building in from the start: graceful shutdown (finish the current
-   message on Ctrl+C), retry and a dead-letter stream for messages that keep
-   failing, and idempotency (a redelivered event hits the primary key —
-   treat that as done, not as an error). Adds Redis to compose and one Go
-   dependency (`go-redis`). The market does not change.
-2. **Measure it — `cmd/loadgen`.** Goroutines posting N events per second;
-   report latency percentiles and errors. Run it before and after step 1,
-   so "why Redis" has a number behind it. Good Go concurrency practice.
+1. **Measure first — `cmd/loadgen`** ← start here. A small Go program:
+   goroutines post N events per second for a set time (e.g. 500/s for 30 s)
+   to `POST /api/v1/events`, time every request, and print sent / errors and
+   latency p50 / p95 / p99. Run it against today's API (direct MySQL insert)
+   and keep the numbers; run the same load after step 2. Without a baseline,
+   "what did Redis speed up?" has no answer. Good Go concurrency practice.
+   Its events must be easy to tell apart and delete: send them with
+   `event_domain = "loadgen.test"` (and no `session_id`, so the funnel and
+   top products ignore them), and document the `DELETE` in COMMANDS.md.
+2. **Ingestion queue — Redis Streams + worker.** Design, as agreed
+   2026-09-28:
+   - **API** (`controllers/event.go`): validation and the `user_ip` fill stay
+     where they are. **New:** if `event_timestamp` is missing the API sets it
+     to now — once there is a queue, the database clock would record when the
+     worker got to the event, not when it arrived. Then `XADD` the event (one
+     JSON field) to stream `events` with `MAXLEN ~ 100000`, so Redis keeps a
+     bounded tail instead of growing forever.
+   - **Answer `202 Accepted`, not `201`**: stored later, not yet. A duplicate
+     `event_id` can no longer be a `409` — the insert happens after the answer
+     — so the worker treats it as already done (idempotent). The tracker and
+     `cmd/send` count any 2xx as success, so neither changes; the Events log
+     will show 202.
+   - **Redis down → `503`** from the API. No fallback to a direct insert: two
+     write paths are twice the ways to break.
+   - **Worker** (`backend/cmd/worker`): `XREADGROUP` in group `ingest`, up to
+     100 at a time, `BLOCK` 5 s when idle; `INSERT` each (the SQL moves here),
+     then `XACK`. Duplicate key (1062) → ack. Any other error → no ack; the
+     entry stays in the pending list. `XAUTOCLAIM` retries entries idle for
+     30 s; after 5 deliveries an entry goes to `events:dead` and is acked, so
+     one bad message cannot block the queue. Ctrl+C finishes the current batch
+     before exiting (graceful shutdown).
+   - **Compose**: a `redis` service, pinned image, `appendonly yes` and a
+     volume, so a Redis restart keeps the queue. `REDIS_ADDR` in
+     `backend/.env.example`. One Go dependency: `github.com/redis/go-redis/v9`
+     (speaking Redis's protocol by hand is possible but not worth it).
+   - Consequences to show the mentor: events appear in the panel once the
+     worker has written them; with the worker stopped, the shop keeps getting
+     202s, nothing shows up, and starting the worker drains the backlog.
+   - Optional: a "queued" card on the dashboard (stream length + pending
+     count) that shows when the worker falls behind.
+   - The market and the panel do not change.
 3. **Live counters in Redis.** `INCR` per hour, per day and per action,
    HyperLogLog for unique sessions and users. `/events/stats` reads counters
    instead of scanning the table; its JSON keeps the same shape, so the
@@ -83,8 +113,9 @@ Improvising outside this list is fine — ask first.
 
 5. **Live event feed**: events appear in the panel as they are clicked in
    the shop (polling first; server-sent events if it earns its place).
-6. **Funnel**: listing view → product click → add to cart → checkout, per
-   session, with conversion between steps.
+6. ~~**Funnel**: listing view → product click → add to cart → checkout, per
+   session, with conversion between steps.~~ Done 2026-09-28, on the
+   dashboard.
 7. **Session view**: one `session_id` as a timeline — anonymous browsing,
    the login, the cart.
 8. ~~**Top products** by clicks and add-to-carts.~~ Done 2026-09-28, on the

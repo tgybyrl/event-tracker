@@ -47,7 +47,7 @@ The mentor's 1–6 curriculum is done (Go + Gin, MySQL, sqlx, the wired
 - **Panel** (`admin/`, under `/admin`): dashboard in Istanbul time (cards
   with hand-drawn SVG sparklines; events over time for 24 hours / 14 days
   against the period before, drawn with Chart.js; the shopping funnel;
-  events by action), events list with filters,
+  top products), events list with filters,
   staff accounts (manager / worker, screen-based access), own settings.
   Reads events only through the Go API; its own tables live in `panel_db`
   under a MySQL user with no rights on `events_db`.
@@ -87,7 +87,8 @@ Improvising outside this list is fine — ask first.
    session, with conversion between steps.
 7. **Session view**: one `session_id` as a timeline — anonymous browsing,
    the login, the cart.
-8. **Top products** by clicks and add-to-carts.
+8. ~~**Top products** by clicks and add-to-carts.~~ Done 2026-09-28, on the
+   dashboard in place of "Events by action".
 
 ## 3. Infrastructure — pay the debt
 
@@ -231,7 +232,10 @@ Still for the mentor — schema changes are expensive to undo:
 - Market events carry `event_domain = localhost` locally — the tracker sends
   the page's hostname, which is right in production and odd on a laptop.
 - Products live in `market/products.json`; nothing ties `product_id` in an
-  event to a products table, because there is none.
+  event to a products table, because there is none. Since 2026-09-28 the
+  tracker sends `product_name`, `brand` and `category` with each product
+  event so the panel can name products; earlier events have only the id,
+  and a name changed in the JSON shows up only in new events.
 - Two clocks in one panel: the dashboard counts and shows Istanbul time,
   the events list shows UTC (mentor question 11).
 - The funnel counts a step if the visit ever did it, not in order: a visit

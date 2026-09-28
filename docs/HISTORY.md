@@ -462,3 +462,6 @@ Nine commits, `ab6a8a7`..`b528b0d`, one per step, plus the docs commit that wrot
   this period as a filled line against the period before as a grey line,
   a crosshair tooltip, a one-time draw-in animation; `/events/stats` gained
   a `previous` value per hourly and daily bucket for it.
+  "Events by action" on the dashboard gave way to **Top products** (last 7
+  days, market visits only, clicks and adds per product); for it the tracker
+  now sends `product_name`, `brand` and `category` with every product event.

@@ -8,6 +8,16 @@
 
 const CART_KEY = 'pasaj.cart';
 
+// The demo login. There are no passwords and no accounts on a server: the
+// chosen customer is remembered in localStorage, and tracker.js reads the
+// same key to put that customer's id into every event as user_id.
+const CUSTOMER_KEY = 'pasaj.customer';
+const DEMO_CUSTOMERS = [
+    { id: 2001, name: 'Ayşe Yılmaz' },
+    { id: 2002, name: 'Mehmet Kaya' },
+    { id: 2003, name: 'Zeynep Demir' },
+];
+
 const GENDERS = ['Kadın', 'Erkek', 'Çocuk'];
 const CATEGORIES = ['Ayakkabı', 'Spor', 'Giyim', 'Çanta ve Aksesuar'];
 
@@ -25,6 +35,7 @@ function escapeHtml(value) {
 
 const ICONS = {
     search: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5" stroke-linecap="round"/></svg>',
+    user: '<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4.5 20c.8-3.6 3.8-6 7.5-6s6.7 2.4 7.5 6"/></svg>',
     cart: '<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 4h2.6l2.3 10.2a1.5 1.5 0 0 0 1.5 1.2h8.7a1.5 1.5 0 0 0 1.5-1.1L21 7.5H6"/><circle cx="9.5" cy="19.5" r="1.4"/><circle cx="17" cy="19.5" r="1.4"/></svg>',
     heart: '<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-9.3-9.2C1.4 7.9 3.6 4.5 7 4.5c2 0 3.5 1.1 5 2.9 1.5-1.8 3-2.9 5-2.9 3.4 0 5.6 3.4 4.3 6.8-1.8 4.6-9.3 9.2-9.3 9.2Z"/></svg>',
     truck: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 6.5h11v9h-11zM13.5 9.5h4l3 3.2v2.8h-7z"/><circle cx="6.5" cy="17" r="1.6" fill="#fff"/><circle cx="17" cy="17" r="1.6" fill="#fff"/></svg>',
@@ -67,6 +78,57 @@ function updateCartCount() {
     badge.hidden = count === 0;
 }
 
+/* ---------- demo login ---------- */
+
+function readCustomer() {
+    try {
+        return JSON.parse(localStorage.getItem(CUSTOMER_KEY));
+    } catch {
+        return null;
+    }
+}
+
+function accountMenu() {
+    const customer = readCustomer();
+    const label = customer ? customer.name.split(' ')[0] : 'Giriş Yap';
+    const menu = customer
+        ? `<p class="account__who"><strong>${escapeHtml(customer.name)}</strong> olarak giriş yaptın. Event'lere user_id ${customer.id} ekleniyor.</p>
+           <button type="button" class="account__item" data-logout>Çıkış yap</button>`
+        : `<p class="account__who">Bir demo müşteri seç</p>
+           ${DEMO_CUSTOMERS.map((c) => `<button type="button" class="account__item" data-login="${c.id}">${c.name}</button>`).join('')}
+           <p class="account__note">Şifre yok. Seçtiğin müşterinin numarası, bundan sonraki event'lere user_id olarak eklenir.</p>`;
+
+    // <details> opens and closes on its own, with the keyboard too.
+    return `
+        <details class="account" data-account>
+            <summary class="account__toggle">${ICONS.user}<span>${escapeHtml(label)}</span></summary>
+            <div class="account__menu">${menu}</div>
+        </details>`;
+}
+
+function bindAccountMenu(params) {
+    const account = document.querySelector('[data-account]');
+
+    account.querySelectorAll('[data-login]').forEach((button) => {
+        button.addEventListener('click', () => {
+            const customer = DEMO_CUSTOMERS.find((c) => c.id === Number(button.dataset.login));
+            localStorage.setItem(CUSTOMER_KEY, JSON.stringify(customer));
+            renderChrome(params);
+        });
+    });
+
+    account.querySelector('[data-logout]')?.addEventListener('click', () => {
+        localStorage.removeItem(CUSTOMER_KEY);
+        renderChrome(params);
+    });
+}
+
+// A click anywhere else closes the open menu, as menus usually do.
+document.addEventListener('click', (e) => {
+    const open = document.querySelector('[data-account][open]');
+    if (open && !open.contains(e.target)) open.open = false;
+});
+
 /* ---------- shared header and footer ---------- */
 
 function renderChrome(params) {
@@ -91,6 +153,7 @@ function renderChrome(params) {
                     ${ICONS.search}
                     <input type="search" name="q" value="${escapeHtml(q)}" placeholder="Örneğin: koşu ayakkabısı" aria-label="Ürün ara">
                 </form>
+                ${accountMenu()}
                 <a class="cart-link" href="/market/cart">
                     ${ICONS.cart}
                     <span>Sepetim</span>
@@ -111,6 +174,7 @@ function renderChrome(params) {
             <p>Bu bir demo mağazadır. Ürünler ve markalar hayalidir, sipariş ve ödeme alınmaz.</p>
         </div>`;
 
+    bindAccountMenu(params);
     updateCartCount();
 }
 

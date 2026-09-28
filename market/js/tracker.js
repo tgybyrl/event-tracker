@@ -13,6 +13,9 @@
 const API_URL = '/api/v1/events';
 const SESSION_KEY = 'pasaj.session';
 const LOG_KEY = 'pasaj.eventlog';
+// Written by the demo login in shop.js; read here, so the two files share a
+// key name and nothing else.
+const CUSTOMER_KEY_FOR_TRACKING = 'pasaj.customer';
 
 // A visit ends after 30 minutes without activity; the next event starts a
 // new session. This is the usual analytics definition of a session.
@@ -42,6 +45,19 @@ function sessionId() {
     return session.id;
 }
 
+// The logged-in demo customer's id, or null for an anonymous visitor.
+// Read on every event, so logging in or out takes effect from the next
+// event on. The session_id does not change on login: the same visit's
+// earlier, anonymous events and its later, identified ones share it, which
+// is how an analyst can tell what someone did before they logged in.
+function userId() {
+    try {
+        return JSON.parse(localStorage.getItem(CUSTOMER_KEY_FOR_TRACKING))?.id ?? null;
+    } catch {
+        return null;
+    }
+}
+
 // "tablet" for a touch screen of tablet width, "web" otherwise. A phone
 // browser is still the web; "app" is reserved for a native app.
 function platform() {
@@ -56,8 +72,10 @@ function platform() {
 async function track(action, source, payload = {}) {
     const event = {
         event_id: crypto.randomUUID(),
-        user_id: null, // the shop has no login: every visitor is anonymous
-        user_ip: null, // the browser does not know its own public address
+        user_id: userId(),
+        // The browser does not know its own public address; the API fills
+        // it in from the connection.
+        user_ip: null,
         event_platform: platform(),
         event_domain: location.hostname,
         event_source: source,

@@ -158,6 +158,22 @@ cd backend && go run ./cmd/send
 ```
 `events.json`'ı okur, her event'i `POST :8080/api/v1/events`'e gönderir. Her istek için status basar, sonunda gönderilen/başarısız özeti verir. **Go servisi ayakta olmalı.**
 
+### Yük testi (`loadgen`)
+
+```
+cd backend && go run ./cmd/loadgen -rate 500 -duration 30s
+```
+Saniyede `-rate` kadar event'i `-duration` boyunca gönderir, sonunda status sayılarını ve latency p50 / p95 / p99 / max değerlerini basar. Default'lar 500/s ve 30s. `-url` ile hedef değişir (default `http://127.0.0.1:8080/api/v1/events`, Caddy'siz). **Go servisi ayakta olmalı.** Baseline ölçümü PLAN.md'de (Roadmap 1.1).
+
+Gönderilen event'lerin hepsinde `event_domain = 'loadgen.test'` var. Silinene kadar dashboard'daki toplamlara ve saatlik grafiğe girerler, o yüzden her koşudan sonra silinmeleri gerekir:
+
+```
+docker compose exec db sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" events_db'
+```
+```sql
+DELETE FROM events WHERE event_domain = 'loadgen.test';
+```
+
 ---
 
 ## Laravel (`admin/`)

@@ -39,7 +39,8 @@ The mentor's 1–6 curriculum is done (Go + Gin, MySQL, sqlx, the wired
   id, required columns, JSON-object payload, no future timestamps), 409 on
   a duplicate id, fills `user_ip` from the connection when the body has
   none. `GET /api/v1/events`, `/events/facets`, `/events/stats` — behind
-  `EVENTS_API_KEY`. Binaries in `cmd/api`, `cmd/generate`, `cmd/send`.
+  `EVENTS_API_KEY`. Binaries in `cmd/api`, `cmd/generate`, `cmd/send`,
+  `cmd/loadgen`.
 - **Market** (`market/`): the "BLO" shop — listing, product, cart, demo
   login (customers 2001-2003). `tracker.js` sends `page_view`,
   `product_click`, `add_to_cart`, `checkout_start`; `session_id` rides in
@@ -61,16 +62,38 @@ Improvising outside this list is fine — ask first.
 
 ## 1. Redis ← next
 
-1. **Measure first — `cmd/loadgen`** ← start here. A small Go program:
-   goroutines post N events per second for a set time (e.g. 500/s for 30 s)
-   to `POST /api/v1/events`, time every request, and print sent / errors and
-   latency p50 / p95 / p99. Run it against today's API (direct MySQL insert)
-   and keep the numbers; run the same load after step 2. Without a baseline,
-   "what did Redis speed up?" has no answer. Good Go concurrency practice.
-   Its events must be easy to tell apart and delete: send them with
-   `event_domain = "loadgen.test"` (and no `session_id`, so the funnel and
-   top products ignore them), and document the `DELETE` in COMMANDS.md.
-2. **Ingestion queue — Redis Streams + worker.** Design, as agreed
+1. ~~**Measure first — `cmd/loadgen`**~~ Done 2026-09-28 (branch
+   `loadgen`). Open loop: a ticker starts one request per tick whether or
+   not earlier ones answered, so a slow API shows as latency, not as fewer
+   requests. Events use `event_domain = "loadgen.test"` and no
+   `session_id`; the `DELETE` is in COMMANDS.md. Run the same three levels
+   again after step 2.
+
+   **Baseline — direct MySQL insert**, 2026-09-28, M1 Pro (10 cores),
+   API via `go run` in Gin debug mode (logs every request), straight to
+   `:8080` (no Caddy), MySQL 8.4 in Docker, 30 s per level:
+
+   | rate | achieved | status | p50 | p95 | p99 | max | new MySQL conns | max used conns |
+   |---|---|---|---|---|---|---|---|---|
+   | 100/s | 100/s | 3000 × 201 | 2.6 ms | 4.6 ms | 7.2 ms | 16.8 ms | 2 | 5 |
+   | 500/s | 494/s | 14809 × 201 | 1.5 ms | 4.7 ms | 29.1 ms | 95.3 ms | 468 | 48 |
+   | 1000/s | 997/s | 29909 × 201 | 1.6 ms | 3.1 ms | 29.2 ms | 58.7 ms | 857 | 51 |
+
+   No errors at any level; every 201 was a row in the table. What it shows:
+   - Today's API is not slow at these rates. Redis will not win on p50;
+     what it can change is the tail (p99) and what happens when MySQL is
+     slow or down.
+   - **Connection churn.** From 500/s up, Go opened a new MySQL connection
+     for every ~30 requests (857 in 30 s at 1000/s). `config/db.go` sets
+     no pool limits, and Go's default keeps only 2 idle connections, so
+     under load it opens and closes them constantly. Likely a source of the
+     p99 jump from 7 to 29 ms — not proven. Fix (not done, ask first):
+     `SetMaxIdleConns` / `SetMaxOpenConns` in `config/db.go`. With the
+     queue the worker does the inserts, so it matters less for the API.
+   - "achieved" falls a little short of the rate (494 of 500): Go's ticker
+     drops a tick when the loop is late. The achieved figure is the one to
+     compare.
+2. **Ingestion queue — Redis Streams + worker.** ← next. Design, as agreed
    2026-09-28:
    - **API** (`controllers/event.go`): validation and the `user_ip` fill stay
      where they are. **New:** if `event_timestamp` is missing the API sets it
@@ -302,6 +325,9 @@ Still for the mentor — schema changes are expensive to undo:
 - Three `.env` files (root, `backend/`, `admin/`) share values kept in sync
   by hand; nothing checks they agree.
 - The DSN host is hardcoded to `127.0.0.1:3306` in `backend/config/db.go`.
+- No MySQL connection pool settings in `backend/config/db.go`: Go keeps
+  2 idle connections and has no upper limit, so under load it opens and
+  closes connections constantly (measured by loadgen, Roadmap 1.1).
 - Gin's validation errors go back to the client as-is (`Key:
   'Event.EventID' Error:Field validation for ...`); a polished API would
   name the JSON fields.

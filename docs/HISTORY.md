@@ -465,3 +465,20 @@ Nine commits, `ab6a8a7`..`b528b0d`, one per step, plus the docs commit that wrot
   "Events by action" on the dashboard gave way to **Top products** (last 7
   days, market visits only, clicks and adds per product); for it the tracker
   now sends `product_name`, `brand` and `category` with every product event.
+
+# Done on 2026-09-28 (branch `loadgen`)
+
+- **`cmd/loadgen`**, Roadmap 1.1: the baseline before Redis. It posts events
+  at a fixed rate for a fixed time and prints status counts and latency
+  p50 / p95 / p99 / max. Built **open loop** — a ticker starts a request on
+  every tick without waiting for earlier answers — because a closed loop
+  (senders that wait for their answer) sends less when the API slows down
+  and hides the slowness it is meant to measure. The HTTP client keeps up to
+  `rate` idle connections; Go's default of 2 would have measured TCP
+  connection setup instead of the API. Its events are `loadgen.test` with no
+  `session_id`, deleted after every run.
+- Measured 100, 500 and 1000/s for 30 s each against the direct MySQL insert
+  (table in PLAN.md, Roadmap 1.1). No errors; p50 under 3 ms at every level,
+  p99 up from 7 ms to 29 ms from 500/s. Found on the way: Go's MySQL pool
+  has no settings, so it opened 857 new connections in 30 s at 1000/s.
+  Recorded, not fixed.

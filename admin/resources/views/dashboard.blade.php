@@ -83,8 +83,11 @@
         <script type="application/json" id="volume-data">@json($volume)</script>
     </x-card>
 
+    {{-- min-w-0 on the cards: a grid cell is otherwise at least as wide as
+         its longest unbreakable line (a product name), and pushes the page
+         sideways on a phone. --}}
     <div class="mt-4 grid items-start gap-4 xl:grid-cols-2">
-        <x-card>
+        <x-card class="min-w-0">
             <div class="border-b border-hairline px-5 py-4">
                 <h2 class="text-base font-bold">Shopping funnel</h2>
                 <p class="mt-0.5 text-sm text-muted">Shop visits in the last 7 days, and how far they got.</p>
@@ -102,43 +105,52 @@
             @endif
         </x-card>
 
-        <x-card>
-            @if ($byAction->isEmpty())
-                <x-empty-state title="No events yet"
-                               body="The table is empty. Open the shop, or run the send script to post the generated dataset.">
+        <x-card class="min-w-0">
+            <div class="border-b border-hairline px-5 py-4">
+                <h2 class="text-base font-bold">Top products</h2>
+                <p class="mt-0.5 text-sm text-muted">Most clicked in the shop in the last 7 days, and how often they went into a cart.</p>
+            </div>
+
+            @if ($topProducts->isEmpty())
+                <x-empty-state title="No product clicks this week"
+                               body="Products appear here once someone clicks them in the demo shop.">
                     <x-slot:action>
-                        <x-badge tone="slate">go run ./cmd/send</x-badge>
+                        <x-button variant="primary" href="/market/list">Open the shop</x-button>
                     </x-slot:action>
                 </x-empty-state>
             @else
-                <div class="border-b border-hairline px-5 py-4">
-                    <h2 class="text-base font-bold">Events by action</h2>
-                    <p class="mt-0.5 text-sm text-muted">What people actually do, across every event received.</p>
-                </div>
+                @php $mostClicks = max(1, $topProducts->max('clicks')); @endphp
 
-                <ul>
-                    @foreach ($byAction as $row)
-                        @php $share = $row->total / $total * 100; @endphp
+                {{-- A ranking, so the rows are numbered. Each row opens the
+                     product in the shop. --}}
+                <ol>
+                    @foreach ($topProducts as $i => $product)
+                        <li class="border-b border-hairline last:border-0">
+                            <a href="/market/product/{{ $product->id }}"
+                               class="flex items-center gap-4 px-5 py-3.5 transition-colors hover:bg-canvas">
+                                <span class="w-5 shrink-0 text-sm font-bold text-muted tabular-nums">{{ $i + 1 }}</span>
 
-                        <li class="flex items-center gap-4 border-b border-hairline px-5 py-3.5 last:border-0">
-                            <div class="w-36 shrink-0">
-                                {{-- Links into the events list, already filtered. --}}
-                                <a href="{{ route('events.index', ['action' => $row->event_action]) }}">
-                                    <x-action-badge :action="$row->event_action" />
-                                </a>
-                            </div>
+                                <div class="min-w-0 flex-1">
+                                    <p class="truncate text-sm">
+                                        @if ($product->brand !== '')
+                                            <span class="font-bold">{{ $product->brand }}</span>
+                                        @endif
+                                        {{ $product->name }}
+                                    </p>
+                                    <div class="mt-1.5 h-1.5 overflow-hidden rounded-full bg-canvas" aria-hidden="true">
+                                        <div class="h-full rounded-full bg-brand" style="width: {{ round($product->clicks / $mostClicks * 100, 1) }}%"></div>
+                                    </div>
+                                </div>
 
-                            <div class="hidden h-2 flex-1 overflow-hidden rounded-full bg-canvas sm:block" aria-hidden="true">
-                                <div class="h-full rounded-full bg-brand" style="width: {{ round($share, 1) }}%"></div>
-                            </div>
-
-                            <p class="ms-auto shrink-0 text-sm tabular-nums sm:ms-0 sm:w-28 sm:text-end">
-                                <span class="font-bold">{{ number_format($row->total) }}</span>
-                                <span class="text-muted">· {{ round($share) }}%</span>
-                            </p>
+                                <p class="shrink-0 text-end text-sm tabular-nums">
+                                    <span class="font-bold">{{ $product->clicks }}</span>
+                                    <span class="text-muted">{{ Str::plural('click', $product->clicks) }}</span>
+                                    <span class="block text-xs text-muted">{{ $product->added }} added to cart</span>
+                                </p>
+                            </a>
                         </li>
                     @endforeach
-                </ul>
+                </ol>
             @endif
         </x-card>
     </div>

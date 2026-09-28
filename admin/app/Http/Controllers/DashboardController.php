@@ -22,7 +22,8 @@ class DashboardController extends Controller
 
     /**
      * Four numbers that answer "is the pipeline alive, and what is it
-     * receiving", the charts behind them, and a count per action.
+     * receiving", the charts behind them, the shopping funnel and the
+     * products drawing the most interest.
      *
      * Everything comes from GET /api/v1/events/stats. Go decides the clock
      * (the display time zone) and the buckets; this method only turns them
@@ -45,10 +46,14 @@ class DashboardController extends Controller
             ? Carbon::parse($stats['last_event_at'])->setTimezone($tz)
             : null;
 
-        // Renamed to the keys the view already reads.
-        $byAction = collect($stats['by_action'])->map(fn (array $row) => (object) [
-            'event_action' => $row['action'],
-            'total' => $row['count'],
+        // A product seen only in events sent before the tracker added names
+        // has none; it is shown by its id instead.
+        $topProducts = collect($stats['top_products'])->map(fn (array $p) => (object) [
+            'id' => $p['product_id'],
+            'brand' => $p['brand'],
+            'name' => $p['name'] !== '' ? $p['name'] : 'Product #' . $p['product_id'],
+            'clicks' => $p['clicks'],
+            'added' => $p['added_to_cart'],
         ]);
 
         // Everything the time chart draws, for both ranges. It goes into the
@@ -80,7 +85,7 @@ class DashboardController extends Controller
         $clock = Str::of($tz)->afterLast('/')->replace('_', ' ')->toString();
 
         return view('dashboard', compact(
-            'total', 'today', 'lastWeek', 'anonymousShare', 'lastReceived', 'byAction',
+            'total', 'today', 'lastWeek', 'anonymousShare', 'lastReceived', 'topProducts',
             'volume', 'sparks', 'funnel', 'clock',
         ));
     }

@@ -39,6 +39,11 @@
 		# /market/css/market.css is the file /srv/market/css/market.css.
 		root * /srv
 
+		# Browsers may otherwise keep using an old copy of shop.js or
+		# tracker.js after it changed. "no-cache" still allows caching, but
+		# makes the browser ask first; an unchanged file costs a 304.
+		header Cache-Control "no-cache"
+
 		# Every product shares one page: /market/product/7 is served
 		# product.html, and the page reads 7 from the address itself.
 		@product path_regexp ^/market/product/[0-9]+$

@@ -36,26 +36,51 @@
         @endif
     </div>
 
-    {{-- Events over time. Both ranges are drawn on the server; the buttons
-         only choose which one is visible. --}}
-    <x-card class="mt-4">
+    {{-- Events over time, drawn by resources/js/volume-chart.js (Chart.js)
+         from the JSON below. The switch swaps the data in place. --}}
+    <x-card class="mt-4" data-volume-chart>
         <div class="flex flex-wrap items-center gap-3 border-b border-hairline px-5 py-4">
             <div>
                 <h2 class="text-base font-bold">Events over time</h2>
-                <p class="mt-0.5 text-sm text-muted">{{ $clock }} time. The last column is still filling up.</p>
+                <p class="mt-0.5 text-sm text-muted">{{ $clock }} time. The dashed end of the blue line is still filling up.</p>
             </div>
-            <div class="ms-auto flex rounded-xl bg-canvas p-1" role="group" aria-label="Range" data-range-switch="volume">
+            <div class="ms-auto flex rounded-xl bg-canvas p-1" role="group" aria-label="Range">
                 <button type="button" class="{{ $switchButton }}" data-range="hours" aria-pressed="true">24 hours</button>
                 <button type="button" class="{{ $switchButton }}" data-range="days" aria-pressed="false">14 days</button>
             </div>
         </div>
 
-        <div class="px-3 pb-3 pt-4 sm:px-5" data-range-panel="hours" data-range-for="volume">
-            <x-chart.columns :points="$hourly" summary="Events per hour, last 24 hours" />
+        <div class="px-3 pb-4 pt-4 sm:px-5">
+            {{-- Legend in HTML: a line sample next to each name, so the two
+                 series are told apart by more than colour. --}}
+            <ul class="mb-3 flex flex-wrap gap-x-5 gap-y-1 ps-2 text-[13px] font-semibold">
+                <li class="flex items-center gap-2">
+                    <span class="h-[3px] w-5 rounded-full bg-brand" aria-hidden="true"></span>
+                    <span data-legend="current">{{ $volume['hours']['currentLabel'] }}</span>
+                </li>
+                <li class="flex items-center gap-2 text-muted">
+                    <span class="h-[2px] w-5 rounded-full bg-muted/75" aria-hidden="true"></span>
+                    <span data-legend="previous">{{ $volume['hours']['previousLabel'] }}</span>
+                </li>
+            </ul>
+
+            <div class="relative h-[300px]">
+                <canvas role="img" aria-label="Events per hour, last 24 hours, against the 24 hours before"></canvas>
+            </div>
         </div>
-        <div class="px-3 pb-3 pt-4 sm:px-5" data-range-panel="days" data-range-for="volume" hidden>
-            <x-chart.columns :points="$daily" summary="Events per day, last 14 days" />
-        </div>
+
+        {{-- The same numbers as text, for screen readers. --}}
+        <table class="sr-only">
+            <caption>Events per hour, last 24 hours</caption>
+            <thead><tr><th>Hour</th><th>Events</th><th>The day before</th></tr></thead>
+            <tbody>
+                @foreach ($volume['hours']['titles'] as $i => $title)
+                    <tr><td>{{ $title }}</td><td>{{ $volume['hours']['current'][$i] }}</td><td>{{ $volume['hours']['previous'][$i] }}</td></tr>
+                @endforeach
+            </tbody>
+        </table>
+
+        <script type="application/json" id="volume-data">@json($volume)</script>
     </x-card>
 
     <div class="mt-4 grid items-start gap-4 xl:grid-cols-2">

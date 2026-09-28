@@ -51,8 +51,12 @@ class DashboardController extends Controller
             'total' => $row['count'],
         ]);
 
-        $hourly = $this->hourlyPoints($stats['hourly'], $tz);
-        $daily = $this->dailyPoints($stats['daily']);
+        // Everything the time chart draws, for both ranges. It goes into the
+        // page as JSON and resources/js/volume-chart.js draws it.
+        $volume = [
+            'hours' => $this->hourlySeries($stats['hourly'], $tz),
+            'days' => $this->dailySeries($stats['daily']),
+        ];
 
         // Sparklines. Today's line only covers hours since midnight; the
         // anonymous share skips days with no events, which have no share.
@@ -77,61 +81,47 @@ class DashboardController extends Controller
 
         return view('dashboard', compact(
             'total', 'today', 'lastWeek', 'anonymousShare', 'lastReceived', 'byAction',
-            'hourly', 'daily', 'sparks', 'funnel', 'clock',
+            'volume', 'sparks', 'funnel', 'clock',
         ));
     }
 
     /**
-     * 24 hourly buckets -> chart points. Every third hour is labelled,
-     * counted back from the current one, so "now" always has a label.
+     * The 24-hour view: one point per hour, this day against the one before.
      *
-     * @param  list<array{start: string, events: int}>  $hours
-     * @return list<array{label: ?string, value: int, tip: string, partial: bool}>
+     * @param  list<array{start: string, events: int, previous: int}>  $hours
+     * @return array{labels: list<string>, titles: list<string>, current: list<int>, previous: list<int>, currentLabel: string, previousLabel: string}
      */
-    private function hourlyPoints(array $hours, string $tz): array
+    private function hourlySeries(array $hours, string $tz): array
     {
-        $last = count($hours) - 1;
+        $starts = collect($hours)->map(fn ($h) => Carbon::parse($h['start'])->setTimezone($tz));
 
-        return collect($hours)->map(function (array $hour, int $i) use ($last, $tz) {
-            $start = Carbon::parse($hour['start'])->setTimezone($tz);
-            $partial = $i === $last;
-
-            return [
-                'label' => ($last - $i) % 3 === 0 ? $start->format('H:i') : null,
-                'value' => $hour['events'],
-                'tip' => $start->format('H:i') . '–' . $start->copy()->addHour()->format('H:i')
-                    . ' · ' . $this->events($hour['events']) . ($partial ? ' so far' : ''),
-                'partial' => $partial,
-            ];
-        })->all();
+        return [
+            'labels' => $starts->map(fn ($start) => $start->format('H:i'))->all(),
+            'titles' => $starts->map(fn ($start) => $start->format('H:i') . '–' . $start->copy()->addHour()->format('H:i'))->all(),
+            'current' => array_column($hours, 'events'),
+            'previous' => array_column($hours, 'previous'),
+            'currentLabel' => 'Last 24 hours',
+            'previousLabel' => 'The 24 hours before',
+        ];
     }
 
     /**
-     * 14 daily buckets -> chart points, every other day labelled, counted
-     * back from today.
+     * The 14-day view: one point per day, against the 14 days before.
      *
-     * @param  list<array{date: string, events: int, anonymous: int}>  $days
-     * @return list<array{label: ?string, value: int, tip: string, partial: bool}>
+     * @param  list<array{date: string, events: int, anonymous: int, previous: int}>  $days
+     * @return array{labels: list<string>, titles: list<string>, current: list<int>, previous: list<int>, currentLabel: string, previousLabel: string}
      */
-    private function dailyPoints(array $days): array
+    private function dailySeries(array $days): array
     {
-        $last = count($days) - 1;
+        $dates = collect($days)->map(fn ($d) => Carbon::parse($d['date']));
 
-        return collect($days)->map(function (array $day, int $i) use ($last) {
-            $date = Carbon::parse($day['date']);
-            $partial = $i === $last;
-
-            return [
-                'label' => ($last - $i) % 2 === 0 ? $date->format('j M') : null,
-                'value' => $day['events'],
-                'tip' => $date->format('D j M') . ' · ' . $this->events($day['events']) . ($partial ? ' so far' : ''),
-                'partial' => $partial,
-            ];
-        })->all();
-    }
-
-    private function events(int $count): string
-    {
-        return number_format($count) . ' ' . Str::plural('event', $count);
+        return [
+            'labels' => $dates->map(fn ($date) => $date->format('j M'))->all(),
+            'titles' => $dates->map(fn ($date) => $date->format('D j M') . ' (vs ' . $date->copy()->subDays(14)->format('j M') . ')')->all(),
+            'current' => array_column($days, 'events'),
+            'previous' => array_column($days, 'previous'),
+            'currentLabel' => 'Last 14 days',
+            'previousLabel' => 'The 14 days before',
+        ];
     }
 }

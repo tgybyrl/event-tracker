@@ -38,64 +38,9 @@ filterToggle?.addEventListener('click', () => {
     filterToggle.setAttribute('aria-expanded', String(!filterPanel.hidden));
 });
 
-// Chart tooltips. Any element inside a .chart with a data-tip attribute shows
-// that text next to the pointer. One tooltip element serves every chart.
-const chartTip = document.createElement('div');
-chartTip.className = 'chart-tip';
-chartTip.hidden = true;
-document.body.append(chartTip);
-
-document.addEventListener('pointerover', (event) => {
-    const target = event.target.closest?.('.chart [data-tip]');
-    if (!target) return;
-    chartTip.textContent = target.dataset.tip;
-    chartTip.hidden = false;
-});
-
-document.addEventListener('pointermove', (event) => {
-    if (chartTip.hidden) return;
-    // Centred on the pointer, but kept inside the window: near the right
-    // edge a centred tooltip would be cut off.
-    const half = chartTip.offsetWidth / 2;
-    const minX = scrollX + half + 8;
-    const maxX = scrollX + document.documentElement.clientWidth - half - 8;
-    chartTip.style.left = `${Math.min(Math.max(event.pageX, minX), maxX)}px`;
-    chartTip.style.top = `${event.pageY}px`;
-});
-
-document.addEventListener('pointerout', (event) => {
-    if (event.target.closest?.('.chart [data-tip]')) chartTip.hidden = true;
-});
-
-document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') chartTip.hidden = true;
-});
-
-// Range switch on a chart card: buttons with data-range pick which
-// data-range-panel is shown. Both panels are rendered by the server, so
-// switching needs no request.
-document.querySelectorAll('[data-range-switch]').forEach((group) => {
-    const buttons = group.querySelectorAll('[data-range]');
-    const panels = document.querySelectorAll(`[data-range-panel][data-range-for="${group.dataset.rangeSwitch}"]`);
-
-    buttons.forEach((button) => {
-        button.addEventListener('click', () => {
-            buttons.forEach((b) => b.setAttribute('aria-pressed', String(b === button)));
-            panels.forEach((panel) => {
-                panel.hidden = panel.dataset.rangePanel !== button.dataset.range;
-            });
-        });
-    });
-});
-
-// On a narrow screen a chart scrolls sideways inside its card. Start it at
-// the right end: the newest hour or day is the one worth seeing first.
-function scrollChartsToNow() {
-    document.querySelectorAll('.chart.overflow-x-auto').forEach((chart) => {
-        chart.scrollLeft = chart.scrollWidth;
-    });
+// The dashboard's time chart pulls in Chart.js. Loaded only on a page that
+// has the chart, so every other screen stays free of it; Vite splits it
+// into its own file.
+if (document.querySelector('[data-volume-chart]')) {
+    import('./volume-chart');
 }
-
-scrollChartsToNow();
-// A hidden range panel has no width until it is shown.
-document.querySelectorAll('[data-range]').forEach((button) => button.addEventListener('click', scrollChartsToNow));

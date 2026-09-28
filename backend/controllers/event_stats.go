@@ -14,17 +14,22 @@ type actionCount struct {
 }
 
 // One hour of the 24-hour chart. Start is the beginning of the hour in
-// display time, e.g. "2026-09-28T14:00:00+03:00".
+// display time, e.g. "2026-09-28T14:00:00+03:00". Previous is the same hour
+// one day earlier, so the chart can say whether this hour is normal.
 type hourBucket struct {
-	Start  time.Time `json:"start"`
-	Events int       `json:"events"`
+	Start    time.Time `json:"start"`
+	Events   int       `json:"events"`
+	Previous int       `json:"previous"`
 }
 
 // One day of the 14-day chart, as a display-time date ("2026-09-28").
+// Previous is the day 14 days earlier - the same position in the period
+// before.
 type dayBucket struct {
 	Date      string `json:"date"`
 	Events    int    `json:"events"`
 	Anonymous int    `json:"anonymous"`
+	Previous  int    `json:"previous"`
 }
 
 type funnelStep struct {
@@ -122,14 +127,17 @@ func mysqlOffset(t time.Time) string {
 }
 
 // Events per hour for the last 24 hours, oldest first, the current (still
-// running) hour last. Every hour is present: an hour with no events is a
-// zero, not a gap, because an empty hour is exactly the thing a chart of a
-// live system should make visible.
+// running) hour last, each with the same hour of the 24 hours before.
+// Every hour is present: an hour with no events is a zero, not a gap,
+// because an empty hour is exactly the thing a chart of a live system
+// should make visible.
 func hourlySeries(now time.Time) ([]hourBucket, error) {
 	loc := now.Location()
 	y, m, d := now.Date()
 	currentHour := time.Date(y, m, d, now.Hour(), 0, 0, 0, loc)
 	from := currentHour.Add(-23 * time.Hour)
+	// One query covers both periods: the 48 hours back from now.
+	previousFrom := from.Add(-24 * time.Hour)
 
 	// CONVERT_TZ moves the stored UTC time onto the display clock before the
 	// hour is cut off, so an event at 11:30 UTC lands in the 14:00 bucket.
@@ -142,7 +150,7 @@ func hourlySeries(now time.Time) ([]hourBucket, error) {
 			COUNT(*) AS events
 		FROM events
 		WHERE event_timestamp >= ?
-		GROUP BY bucket`, mysqlOffset(now), from)
+		GROUP BY bucket`, mysqlOffset(now), previousFrom)
 	if err != nil {
 		return nil, err
 	}
@@ -152,18 +160,26 @@ func hourlySeries(now time.Time) ([]hourBucket, error) {
 		counts[r.Bucket] = r.Events
 	}
 
+	const key = "2006-01-02 15:00"
 	series := make([]hourBucket, 0, 24)
 	for i := 0; i < 24; i++ {
 		start := from.Add(time.Duration(i) * time.Hour)
-		series = append(series, hourBucket{Start: start, Events: counts[start.Format("2006-01-02 15:00")]})
+		series = append(series, hourBucket{
+			Start:    start,
+			Events:   counts[start.Format(key)],
+			Previous: counts[start.Add(-24*time.Hour).Format(key)],
+		})
 	}
 	return series, nil
 }
 
 // Events and anonymous events per day for the last 14 days including today,
-// oldest first, with empty days filled in as zeros.
+// oldest first, with empty days filled in as zeros, each with the matching
+// day of the 14 days before.
 func dailySeries(startOfToday time.Time) ([]dayBucket, error) {
 	from := startOfToday.AddDate(0, 0, -13)
+	// One query covers both periods: 28 days back from today.
+	previousFrom := from.AddDate(0, 0, -14)
 
 	var rows []dayBucket
 	err := config.DB.Select(&rows, `SELECT
@@ -172,7 +188,7 @@ func dailySeries(startOfToday time.Time) ([]dayBucket, error) {
 			COUNT(CASE WHEN user_id IS NULL THEN 1 END) AS anonymous
 		FROM events
 		WHERE event_timestamp >= ?
-		GROUP BY date`, mysqlOffset(startOfToday), from)
+		GROUP BY date`, mysqlOffset(startOfToday), previousFrom)
 	if err != nil {
 		return nil, err
 	}
@@ -184,9 +200,10 @@ func dailySeries(startOfToday time.Time) ([]dayBucket, error) {
 
 	series := make([]dayBucket, 0, 14)
 	for i := 0; i < 14; i++ {
-		date := from.AddDate(0, 0, i).Format("2006-01-02")
-		day := byDate[date] // zero counts when the day had no events
-		day.Date = date
+		date := from.AddDate(0, 0, i)
+		day := byDate[date.Format("2006-01-02")] // zero counts when the day had no events
+		day.Date = date.Format("2006-01-02")
+		day.Previous = byDate[date.AddDate(0, 0, -14).Format("2006-01-02")].Events
 		series = append(series, day)
 	}
 	return series, nil

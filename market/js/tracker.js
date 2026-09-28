@@ -127,6 +127,20 @@ async function track(action, source, payload = {}) {
 
 /* ---------- what triggers an event ---------- */
 
+// The same product fields on every product event, so whoever reads the
+// events - the panel's "Top products" - can name a product without a copy
+// of this shop's catalogue. Real trackers do the same (Google Analytics'
+// item_id / item_name / item_brand / item_category).
+function productFields(product) {
+    return {
+        product_id: product.id,
+        product_name: product.name,
+        brand: product.brand,
+        category: product.category,
+        product_type: product.type,
+    };
+}
+
 let productsOnPage = new Map();
 
 // Every drawn page is one page_view.
@@ -137,7 +151,7 @@ document.addEventListener('market:page', ({ detail }) => {
     if (detail.shown) productsOnPage = new Map(detail.shown.map((p) => [String(p.id), p]));
 
     const payload = { path: location.pathname + location.search };
-    if (detail.product) payload.product_id = detail.product.id;
+    if (detail.product) Object.assign(payload, productFields(detail.product));
     track('page_view', source, payload);
 });
 
@@ -156,10 +170,7 @@ document.addEventListener('click', async (e) => {
     if (!product) return;
 
     const sent = track('product_click', 'listing', {
-        product_id: product.id,
-        product_type: product.type,
-        category: product.category,
-        brand: product.brand,
+        ...productFields(product),
         position: Number(link.dataset.position),
     });
 
@@ -171,8 +182,7 @@ document.addEventListener('click', async (e) => {
 
 document.addEventListener('market:add-to-cart', ({ detail }) => {
     track('add_to_cart', 'detail', {
-        product_id: detail.product.id,
-        product_type: detail.product.type,
+        ...productFields(detail.product),
         quantity: detail.quantity,
         price: detail.product.price,
         currency: 'TRY',

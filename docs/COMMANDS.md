@@ -273,6 +273,14 @@ docker compose ps
 
 Panel `panel` kullanıcısıyla bağlanıyor. `admin/.env` içindeki `DB_PASSWORD`, kök dizindeki `.env` içindeki `PANEL_DB_PASSWORD` ile aynı mı? `panel` kullanıcısı hiç oluşturulmadıysa yukarıdaki "Veritabanlarının kurulumu" adımlarını çalıştır.
 
+**Market'te her sayfa "Not found" (404), ama `/admin` çalışıyor**
+
+Proxy container'ı `market/` ve `proxy/` klasörlerini diskten bağlıyor. Git bu klasörleri silip yeniden oluşturursa (örneğin bu klasörlerin olmadığı bir branch'e geçip geri dönünce) container silinmiş eski klasörlere bağlı kalır ve içini boş görür. Container'ı yeniden oluştur:
+
+```
+docker compose up -d --force-recreate proxy
+```
+
 **Panelde "The event service is not answering" (503)**
 
 Panel event verisini Go API'den alıyor. Go servisi ayakta mı (`cd backend && go run ./cmd/api`)? `admin/.env` içindeki `EVENTS_API_KEY`, `backend/.env` içindekiyle aynı mı? Gerçek hata `admin/storage/logs/laravel.log` dosyasında.

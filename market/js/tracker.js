@@ -29,7 +29,16 @@ const SOURCES = { list: 'listing', product: 'detail', cart: 'cart' };
 // One id per visit, kept in localStorage so it survives page changes.
 // It travels inside event_payload until the schema gets a session_id column
 // (a question for the mentor).
-function sessionId() {
+//
+// A visit ends, and the next event starts a new one, when:
+//   - 30 minutes pass without an event, or
+//   - the person changes: a customer logs out, or another customer logs in.
+// Logging in from anonymous does NOT end the visit. The anonymous events
+// before the login and the identified ones after it keep one session_id,
+// which is how an analyst sees what someone did before logging in.
+//
+// `user` is the user_id this event is sent with (null when anonymous).
+function sessionId(user) {
     const now = Date.now();
     let session = null;
     try {
@@ -37,19 +46,27 @@ function sessionId() {
     } catch {
         // unreadable: start a new one
     }
-    if (!session || now - session.lastSeen > SESSION_IDLE_MS) {
-        session = { id: crypto.randomUUID(), lastSeen: now };
+
+    const expired = !session || now - session.lastSeen > SESSION_IDLE_MS;
+    // Sessions stored before this rule have no userId; treat them as
+    // anonymous. Only a session that already belongs to someone can switch.
+    const owner = session?.userId ?? null;
+    const switched = owner !== null && owner !== user;
+
+    if (expired || switched) {
+        session = { id: crypto.randomUUID(), lastSeen: now, userId: user };
     }
     session.lastSeen = now;
+    // Records the login on a kept anonymous session, so a later switch to
+    // another customer is recognised.
+    session.userId = user;
     localStorage.setItem(SESSION_KEY, JSON.stringify(session));
     return session.id;
 }
 
 // The logged-in demo customer's id, or null for an anonymous visitor.
 // Read on every event, so logging in or out takes effect from the next
-// event on. The session_id does not change on login: the same visit's
-// earlier, anonymous events and its later, identified ones share it, which
-// is how an analyst can tell what someone did before they logged in.
+// event on. What a change of user does to the session: see sessionId().
 function userId() {
     try {
         return JSON.parse(localStorage.getItem(CUSTOMER_KEY_FOR_TRACKING))?.id ?? null;
@@ -70,9 +87,11 @@ function platform() {
 // Builds one event in the shape the API expects and POSTs it. Returns the
 // HTTP status (201 when stored), or 0 when the request did not get through.
 async function track(action, source, payload = {}) {
+    // Read once, so user_id and the session decision agree for this event.
+    const user = userId();
     const event = {
         event_id: crypto.randomUUID(),
-        user_id: userId(),
+        user_id: user,
         // The browser does not know its own public address; the API fills
         // it in from the connection.
         user_ip: null,
@@ -80,7 +99,7 @@ async function track(action, source, payload = {}) {
         event_domain: location.hostname,
         event_source: source,
         event_action: action,
-        event_payload: { ...payload, session_id: sessionId() },
+        event_payload: { ...payload, session_id: sessionId(user) },
         event_timestamp: new Date().toISOString(),
     };
 

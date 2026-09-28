@@ -462,6 +462,11 @@ Nine commits, `ab6a8a7`..`b528b0d`, one per step, plus the docs commit that wrot
   six 201s, six rows with one session id.
 - `page_view` got its own badge colour in the panel; the filter and the
   dashboard picked the new action up with no code change.
+- **Who and where.** The market got a demo login (three customers,
+  `user_id` 2001-2003), and Go now fills `user_ip` from the connection when
+  the body has none, trusting `X-Forwarded-For` only from the proxy
+  (`TRUSTED_PROXIES`). Before this every market event was anonymous and
+  address-less.
 
 # Next (smallest steps, in order)
 
@@ -552,9 +557,18 @@ Still for the mentor — schema changes are expensive to undo:
 - Laravel trusts `X-Forwarded-*` from **any** address (`trustProxies(at:
   '*')`). Safe only while `:8000` is reachable from this machine alone; a real
   deployment names the proxy's address instead.
-- Every market event is **anonymous** (`user_id` null): the shop has no login.
-  The dashboard's anonymous share now mostly measures the shop, not a tracking
-  fault.
+- The market's login is a **demo login**: three fixed customers (ids
+  2001-2003), no password, remembered in the browser. Enough to show
+  anonymous and identified events in one session; nothing verifies who is
+  "logged in".
+- `user_ip` is stored **in full**. An IP address is personal data under KVKK;
+  a real system would mask it (e.g. drop the last block) or have a stated
+  reason and retention period for keeping it.
+- Locally every visitor is this machine, so every market event carries the
+  same `user_ip`. The value only varies on a real network.
+- `TRUSTED_PROXIES` defaults to `127.0.0.1,::1`, where Docker Desktop delivers
+  Caddy's requests. It also means any program on this machine may set
+  `X-Forwarded-For` and be believed.
 - Market events carry `event_domain = localhost` locally — the tracker sends
   the page's hostname, which is right in production and odd on a laptop.
 - The tracker sends the **browser's clock** as `event_timestamp`. Go refuses
@@ -573,22 +587,14 @@ Still for the mentor — schema changes are expensive to undo:
   sync by hand: `EVENTS_API_KEY` in backend + admin, the panel DB password in
   root + admin, the MySQL root password in root + backend. Each has a
   `.env.example`; nothing checks they agree.
-- `user_ip` comes from the request body, not `c.ClientIP()`. **Decided on
-  2026-09-22 to keep it that way** — this is no longer an open question.
-  Everything posts from localhost, so `c.ClientIP()` would stamp the same
-  address on every row. Worse than boring: `c.ClientIP()` can never return
-  nothing, so the nullable `user_ip` column would never actually hold NULL
-  and the anonymous-vs-known distinction the generator produces would
-  disappear from the data entirely. The column's nullability would become
-  untestable.
-  The cost, worth being able to say out loud: a body-supplied IP is whatever
-  the client claims. In production the trustworthy source is the connection,
-  not the payload — but note that `c.ClientIP()` is only trustworthy once the
-  trusted-proxy list Gin is already warning about is actually configured, so
-  even then it is not free. Real trackers do legitimately receive a
-  third-party IP in the body (server-to-server SDKs, batched mobile sends),
-  so the field itself is not the mistake; trusting it blindly would be.
-- Gin logs "You trusted all proxies" — no trusted-proxy list set.
+- `user_ip`: a body value wins; without one the server takes `c.ClientIP()`
+  (changed 2026-09-28). The 2026-09-22 rule was "body only", because every
+  event came from a script on localhost and `c.ClientIP()` would have stamped
+  one address everywhere. Real browsers changed that: a browser cannot know
+  its own public address, so market events arrived with `user_ip` NULL. The
+  body still wins because server-to-server senders legitimately post someone
+  else's address. The cost of trusting a body value is unchanged: it is
+  whatever the client claims.
 - **Go connects to MySQL as `root`.** The panel no longer does (it has its own
   `panel` user), but Go still can drop any table. It needs its own user with
   `SELECT, INSERT` on `events_db.events` and nothing else.
@@ -624,9 +630,10 @@ Still for the mentor — schema changes are expensive to undo:
   `isManager()` would then quietly answer false for it. A CHECK constraint
   or an ENUM column would close that; two values did not seem worth a
   migration yet.
-- `throttle:5,1` on `POST /login` keys on IP. Behind a proxy every request
-  would look like one IP; same family of problem as Gin's untrusted-proxy
-  warning above.
+- `throttle:5,1` on `POST /admin/login` keys on IP. The panel is now behind
+  Caddy; Laravel trusts `X-Forwarded-For` (`trustProxies('*')`), so it keys on
+  the forwarded address rather than the proxy's — but it believes that header
+  from anyone who can reach `:8000`.
 - Login timing leaks whether an email has an account. The generic "These
   credentials do not match our records" blocks the obvious enumeration, but
   `Auth::attempt` only runs bcrypt when the user is found, so a real account

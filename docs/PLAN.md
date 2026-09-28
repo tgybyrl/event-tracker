@@ -210,6 +210,11 @@ Still for the mentor — schema changes are expensive to undo:
   FormRequests reject anything but `manager`/`worker`, but a hand-written
   `UPDATE users SET role='owner'` would stick and `isManager()` would answer
   false for it.
+- **The proxy answers the whole network.** Compose publishes `"80:80"`, so
+  anyone on the same network (an office one included) reaches `/admin` —
+  with the public seed password — and `POST /api/v1/events`. Fix when it
+  matters: `"127.0.0.1:80:80"`, and open it up only while testing from
+  another device.
 
 ## Data
 
@@ -245,6 +250,13 @@ Still for the mentor — schema changes are expensive to undo:
 - Every dashboard load runs the stats queries as full scans — totals, the
   24 hourly and 14 daily buckets, the funnel's per-session grouping over
   JSON. Fine at hundreds of rows; roadmap 3 replaces them with counters.
+- The tracker only works on `localhost` or HTTPS. It makes ids with
+  `crypto.randomUUID()`, which browsers offer only in a secure context;
+  opened from a phone as `http://<mac-ip>/market/list` it throws and sends
+  nothing (checked 2026-09-28). Fix: a fallback built on
+  `crypto.getRandomValues()`. Until then, test phones and tablets with
+  Chrome's Device Mode on `localhost` — an iPad-sized touch screen sends
+  `event_platform = tablet`.
 
 ## Operations
 

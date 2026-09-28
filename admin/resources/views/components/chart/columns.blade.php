@@ -8,10 +8,12 @@
 
 @php
     // A column chart drawn as one SVG. All geometry is computed here, in the
-    // SVG's own coordinate space (720 wide); the browser scales it to fit.
-    $width = 720;
-    $height = 230;
-    $left = 40;    // room for the y-axis numbers
+    // SVG's own coordinate space (1000 wide); the browser scales it to fit.
+    // 1000 is close to the card's real width on a laptop, so the text lands
+    // near its intended size instead of being blown up or shrunk.
+    $width = 1000;
+    $height = 280;
+    $left = 44;    // room for the y-axis numbers
     $right = 8;
     $top = 14;
     $bottom = 30;  // room for the x-axis labels
@@ -32,7 +34,7 @@
 
     $count = count($points);
     $slot = $plotW / $count;
-    $barW = min(26, $slot * 0.62);
+    $barW = min(34, $slot * 0.62);
     $y = fn ($value) => $base - ($value / $axisTop) * $plotH;
 
     // A column with a rounded top and a square foot, standing on the axis.
@@ -45,17 +47,17 @@
     };
 @endphp
 
-{{-- Wider than a phone on purpose: below that the labels would shrink past
+{{-- Wider than a phone on purpose: below 760px the labels would shrink past
      reading size, so the chart scrolls sideways inside its card instead. --}}
 <div class="chart overflow-x-auto">
-    <svg viewBox="0 0 {{ $width }} {{ $height }}" class="block h-auto w-full min-w-[560px]"
+    <svg viewBox="0 0 {{ $width }} {{ $height }}" class="block h-auto w-full min-w-[760px]"
          role="img" aria-label="{{ $summary }}">
         {{-- Gridlines and y-axis numbers: quiet, so the columns lead. --}}
         @foreach ($ticks as $tick)
             <line x1="{{ $left }}" x2="{{ $width - $right }}" y1="{{ $y($tick) }}" y2="{{ $y($tick) }}"
                   class="stroke-hairline" stroke-width="1" />
             <text x="{{ $left - 8 }}" y="{{ $y($tick) + 4 }}" text-anchor="end"
-                  class="fill-muted text-[11px]">{{ number_format($tick) }}</text>
+                  class="fill-muted text-[12.5px]">{{ number_format($tick) }}</text>
         @endforeach
 
         @foreach ($points as $i => $point)
@@ -74,7 +76,7 @@
 
             @if ($point['label'] !== null)
                 <text x="{{ $x + $barW / 2 }}" y="{{ $height - 10 }}" text-anchor="middle"
-                      class="fill-muted text-[11px]">{{ $point['label'] }}</text>
+                      class="fill-muted text-[12.5px]">{{ $point['label'] }}</text>
             @endif
 
             {{-- The whole slot, top to bottom, answers the pointer - a thin or

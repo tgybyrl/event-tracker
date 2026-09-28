@@ -458,3 +458,7 @@ Nine commits, `ab6a8a7`..`b528b0d`, one per step, plus the docs commit that wrot
   24 hours / 14 days switch, pointer tooltips, the running bucket drawn
   pale and dashed, and a sideways-scrolling chart on phones that opens at
   "now".
+  The same day the time chart moved to **Chart.js** (the agreed fallback):
+  this period as a filled line against the period before as a grey line,
+  a crosshair tooltip, a one-time draw-in animation; `/events/stats` gained
+  a `previous` value per hourly and daily bucket for it.

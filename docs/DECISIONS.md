@@ -266,7 +266,7 @@ What I chose and why: keep a body value when there is one (server-to-server
   Open cost: the IP is personal data under KVKK and is stored in full.
 What I'd do differently: TODO
 
-## 2026-09-28 — Dashboard charts drawn by hand, counted in Istanbul time
+## 2026-09-28 — Dashboard charts: SVG by hand, then Chart.js for the time chart; Istanbul time
 
 Problem: the dashboard was four numbers and a list. With real traffic it
   could show trends and where shoppers drop off.
@@ -276,6 +276,12 @@ What I chose and why: three charts - events over time (24 hours / 14
   Blade components, not with Chart.js: no new dependency, and they use the
   panel's own colours and font. Chart.js stays the fallback if they are
   not good enough.
+  Same day, the fallback was taken for the time chart only: as a column
+  chart it looked flat, and what came next - a second line for the period
+  before, smooth curves, a crosshair tooltip, an entry animation - is what
+  a chart library is for. `chart.js` 4.5.1, pinned, only the line-chart
+  parts imported, loaded only on the dashboard. The sparklines and the
+  funnel stay hand-drawn: simple, and they fit.
   The funnel counts visits (`session_id`) that reached each step, where a
   step only counts if every earlier one happened too: viewed the listing
   -> clicked a product -> added to cart -> started checkout. It ignores

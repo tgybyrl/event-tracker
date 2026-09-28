@@ -44,9 +44,10 @@ The mentor's 1–6 curriculum is done (Go + Gin, MySQL, sqlx, the wired
   login (customers 2001-2003). `tracker.js` sends `page_view`,
   `product_click`, `add_to_cart`, `checkout_start`; `session_id` rides in
   `event_payload` (30 idle minutes or a change of customer start a new one).
-- **Panel** (`admin/`, under `/admin`): dashboard (cards with sparklines,
-  events over time for 24 hours / 14 days, the shopping funnel, events by
-  action — all hand-drawn SVG, in Istanbul time), events list with filters,
+- **Panel** (`admin/`, under `/admin`): dashboard in Istanbul time (cards
+  with hand-drawn SVG sparklines; events over time for 24 hours / 14 days
+  against the period before, drawn with Chart.js; the shopping funnel;
+  events by action), events list with filters,
   staff accounts (manager / worker, screen-based access), own settings.
   Reads events only through the Go API; its own tables live in `panel_db`
   under a MySQL user with no rights on `events_db`.

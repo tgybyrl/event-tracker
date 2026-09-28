@@ -44,7 +44,9 @@ The mentor's 1–6 curriculum is done (Go + Gin, MySQL, sqlx, the wired
   login (customers 2001-2003). `tracker.js` sends `page_view`,
   `product_click`, `add_to_cart`, `checkout_start`; `session_id` rides in
   `event_payload` (30 idle minutes or a change of customer start a new one).
-- **Panel** (`admin/`, under `/admin`): dashboard, events list with filters,
+- **Panel** (`admin/`, under `/admin`): dashboard (cards with sparklines,
+  events over time for 24 hours / 14 days, the shopping funnel, events by
+  action — all hand-drawn SVG, in Istanbul time), events list with filters,
   staff accounts (manager / worker, screen-based access), own settings.
   Reads events only through the Go API; its own tables live in `panel_db`
   under a MySQL user with no rights on `events_db`.
@@ -69,10 +71,10 @@ Improvising outside this list is fine — ask first.
 2. **Measure it — `cmd/loadgen`.** Goroutines posting N events per second;
    report latency percentiles and errors. Run it before and after step 1,
    so "why Redis" has a number behind it. Good Go concurrency practice.
-3. **Live counters in Redis.** `INCR` per day and per action, HyperLogLog
-   for unique sessions and users. The dashboard reads counters instead of
-   scanning the table, and a **daily events chart** finally has the right
-   data source.
+3. **Live counters in Redis.** `INCR` per hour, per day and per action,
+   HyperLogLog for unique sessions and users. `/events/stats` reads counters
+   instead of scanning the table; its JSON keeps the same shape, so the
+   dashboard charts (built 2026-09-28 on SQL) do not change.
 4. **Rate limiting** on `POST /api/v1/events` per IP, in Redis. The open
    endpoint (mentor question 10) gets a ceiling.
 
@@ -166,8 +168,9 @@ Still for the mentor — schema changes are expensive to undo:
 10. `POST /api/v1/events` is open to anyone. Per-domain API key, rate limit
     (roadmap 4), or something else, once a real tracker sends from the
     internet?
-11. Times are stored and shown in UTC; "today" is the UTC day. Show Istanbul
-    time instead?
+11. Times are stored in UTC. Since 2026-09-28 the dashboard counts and shows
+    them in Istanbul time (`DISPLAY_TIMEZONE`); the events list still shows
+    UTC. Istanbul everywhere?
 
 # Known shortcuts
 
@@ -228,9 +231,15 @@ Still for the mentor — schema changes are expensive to undo:
   the page's hostname, which is right in production and odd on a laptop.
 - Products live in `market/products.json`; nothing ties `product_id` in an
   event to a products table, because there is none.
-- The dashboard's "Events today" is the **UTC** day (computed in Go's
-  `EventStats`). Between 00:00 and 03:00 Istanbul time it still counts
-  yesterday evening (mentor question 11).
+- Two clocks in one panel: the dashboard counts and shows Istanbul time,
+  the events list shows UTC (mentor question 11).
+- The funnel counts a step if the visit ever did it, not in order: a visit
+  that added to cart and later viewed the listing still counts as having
+  gone listing → cart. It only sees market visits (events with a
+  `session_id`).
+- Every dashboard load runs the stats queries as full scans — totals, the
+  24 hourly and 14 daily buckets, the funnel's per-session grouping over
+  JSON. Fine at hundreds of rows; roadmap 3 replaces them with counters.
 
 ## Operations
 

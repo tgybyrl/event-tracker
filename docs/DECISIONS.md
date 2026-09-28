@@ -265,3 +265,22 @@ What I chose and why: keep a body value when there is one (server-to-server
   where Docker Desktop delivers the proxy's requests).
   Open cost: the IP is personal data under KVKK and is stored in full.
 What I'd do differently: TODO
+
+## 2026-09-28 — Dashboard charts drawn by hand, counted in Istanbul time
+
+Problem: the dashboard was four numbers and a list. With real traffic it
+  could show trends and where shoppers drop off.
+What I tried: TODO
+What I chose and why: three charts - events over time (24 hours / 14
+  days), a shopping funnel, sparklines in the cards - drawn as SVG in
+  Blade components, not with Chart.js: no new dependency, and they use the
+  panel's own colours and font. Chart.js stays the fallback if they are
+  not good enough.
+  The funnel counts visits (`session_id`) that reached each step, where a
+  step only counts if every earlier one happened too: viewed the listing
+  -> clicked a product -> added to cart -> started checkout. It ignores
+  the order of the steps.
+  Buckets and "today" use the display clock (`DISPLAY_TIMEZONE`, default
+  Europe/Istanbul). Storage stays UTC; only the grouping for people to
+  read changes. Before this, "today" started at 03:00 Istanbul time.
+What I'd do differently: TODO

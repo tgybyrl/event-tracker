@@ -450,3 +450,11 @@ Nine commits, `ab6a8a7`..`b528b0d`, one per step, plus the docs commit that wrot
 - **A new session per person** (`session-per-user`): a session now also ends
   when the customer changes (logout, or another customer logs in); logging in
   from anonymous still keeps it.
+- **Dashboard charts** (`dashboard-charts`): `/events/stats` gained
+  `hourly` (24 buckets), `daily` (14 days, with anonymous counts), `funnel`
+  (visits per step, last 7 days) and `timezone`, all counted on the
+  Istanbul clock; empty buckets are zeros, not gaps. The panel draws them
+  with three hand-made SVG components — columns, sparkline, funnel — with a
+  24 hours / 14 days switch, pointer tooltips, the running bucket drawn
+  pale and dashed, and a sideways-scrolling chart on phones that opens at
+  "now".

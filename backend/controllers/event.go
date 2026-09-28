@@ -44,6 +44,17 @@ func CreateEvent(c *gin.Context) {
 		return
 	}
 
+	// A browser cannot know its own public address, so the market's tracker
+	// sends none and the server takes it from the connection (through the
+	// proxy's X-Forwarded-For, see SetTrustedProxies in cmd/api). A value in
+	// the body still wins: server-to-server senders post on behalf of someone
+	// else and put that person's address there.
+	if newEvent.UserIP == nil {
+		if ip := c.ClientIP(); ip != "" {
+			newEvent.UserIP = &ip
+		}
+	}
+
 	// A nil Timestamp is sent as NULL, and COALESCE turns that into the
 	// database clock — same result the column DEFAULT gave before, without a
 	// second query shape for "client sent no timestamp".

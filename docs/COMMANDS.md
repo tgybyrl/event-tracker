@@ -179,6 +179,11 @@ go vet ./...
 Derlenen ama şüpheli olan kodu yakalar (kullanılmayan sonuç, yanlış `Printf` formatı gibi).
 
 ```
+cd backend && go test ./...
+```
+Bütün testleri çalıştırır (`*_test.go` dosyaları: `cmd/loadgen` → `percentile`, `cmd/worker` → `decide`). Redis veya MySQL gerekmez. `-v` her testi ve alt testi ayrı satırda gösterir; `-count=1` önceki sonucu (`(cached)`) kullanmadan yeniden çalıştırır; `-run TestDecide` sadece adı eşleşeni çalıştırır.
+
+```
 gofmt -l .
 ```
 Formatı bozuk dosyaları listeler. `-w` ile düzeltir: `gofmt -w .`

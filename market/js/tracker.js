@@ -85,7 +85,8 @@ function platform() {
 /* ---------- sending ---------- */
 
 // Builds one event in the shape the API expects and POSTs it. Returns the
-// HTTP status (201 when stored), or 0 when the request did not get through.
+// HTTP status (202 when queued for storage), or 0 when the request did not
+// get through.
 async function track(action, source, payload = {}) {
     // Read once, so user_id and the session decision agree for this event.
     const user = userId();
@@ -245,7 +246,7 @@ drawer.innerHTML = `
         </header>
         <ol class="event-log__list" data-log-list></ol>
         <footer class="event-log__foot">
-            201 = kaydedildi. Hepsini <a href="/admin/events">panelde</a> görebilirsin.
+            202 = alındı, birkaç saniye içinde <a href="/admin/events">panelde</a> görünür.
         </footer>
     </section>
     <button type="button" class="event-log__toggle" aria-expanded="false" aria-controls="event-log-panel" data-log-toggle>

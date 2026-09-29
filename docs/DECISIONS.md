@@ -290,3 +290,38 @@ What I chose and why: three charts - events over time (24 hours / 14
   Europe/Istanbul). Storage stays UTC; only the grouping for people to
   read changes. Before this, "today" started at 03:00 Istanbul time.
 What I'd do differently: TODO
+
+## 2026-09-30 — MySQL pool: 25 connections, kept open
+
+Problem: `config/db.go` set no pool limits. Under load Go opened a MySQL
+  connection per overlapping request and closed it after one query (412
+  in 30 s at 1000/s), with no upper bound below MySQL's 151.
+What I tried: TODO
+What I chose and why: `SetMaxOpenConns(25)` and `SetMaxIdleConns(25)`: a
+  connection, once opened, is reused; a burst waits for a free one instead
+  of opening more. Measured: 412 → 25 new connections, latency unchanged.
+  The first guess — that the churn caused the p99 of 29 ms — was wrong; the
+  API's log lines going to a terminal did. Kept for the bound, not speed.
+What I'd do differently: TODO
+
+## 2026-09-30 — The ingestion queue: 202, ACKED trimming, a worker that waits for MySQL
+
+Problem: `POST /api/v1/events` inserted into MySQL before answering, so a
+  slow or stopped MySQL meant slow or failed event sends.
+What I tried: TODO
+What I chose and why: the API adds the event to the Redis stream `events`
+  and answers **202 Accepted**; `cmd/worker` inserts it later. Details
+  decided while building:
+  - `MAXLEN ~ 100000` with **`ACKED`** (Redis 8.2+): trim only what the
+    worker has acknowledged. Plain `MAXLEN` would drop unwritten events once
+    a backlog passed the cap. Cost: unbounded growth while no worker runs.
+  - The worker **pings MySQL before every read and takes nothing while it
+    is down**. Without that, the "5 deliveries → `events:dead`" rule, meant
+    for bad messages, would bury good events during an outage.
+  - `XPENDING` + `XCLAIM` rather than `XAUTOCLAIM`, for the delivery count.
+  - Duplicates: `409` is gone; the worker acks a duplicate key as done.
+  - `BLOCK 1s`: go-redis ignores a cancelled context during a blocking
+    read, so Ctrl+C on an idle worker waited out the block.
+  Measured: p99 at 1000/s 5.4 → 1.6 ms; one worker writes ~640/s, two keep
+  up with 1000/s.
+What I'd do differently: TODO

@@ -29,18 +29,28 @@ The mentor's 1–6 curriculum is done (Go + Gin, MySQL, sqlx, the wired
                      /          |                    \
           /market/...       /api/v1/...            /admin/...
          BLO demo shop ─POST─► Go + Gin API ◄─GET── Laravel panel
-         (tracker.js)          │   (reads need       (panel_db)
-                               │    the API key)
-                               ▼
+         (tracker.js)       202 │  ▲ reads need      (panel_db)
+                         XADD   │  │ the API key
+                                ▼  │
+              Redis · stream "events"
+                                │ XREADGROUP (group "ingest")
+                                ▼  │
+                       cmd/worker ─┼─INSERT, then XACK
+                                   ▼
                       MySQL · events_db.events
 ```
 
 - **Go API** (`backend/`): `POST /api/v1/events` — public, validated (UUID
-  id, required columns, JSON-object payload, no future timestamps), 409 on
-  a duplicate id, fills `user_ip` from the connection when the body has
-  none. `GET /api/v1/events`, `/events/facets`, `/events/stats` — behind
-  `EVENTS_API_KEY`. Binaries in `cmd/api`, `cmd/generate`, `cmd/send`,
-  `cmd/loadgen`.
+  id, required columns, JSON-object payload, no future timestamps), fills
+  `user_ip` from the connection and `event_timestamp` with now when the
+  body has none, adds the event to the Redis stream `events` and answers
+  **202**; 503 when Redis is down. `GET /api/v1/events`, `/events/facets`,
+  `/events/stats` — behind `EVENTS_API_KEY`, read MySQL directly.
+- **Worker** (`backend/cmd/worker`): reads the stream as consumer group
+  `ingest`, inserts into MySQL, acknowledges. Retries a refused entry after
+  30 s, moves it to `events:dead` after 5 deliveries; takes nothing while
+  MySQL is down. Several can run at once.
+- Other binaries: `cmd/generate`, `cmd/send`, `cmd/loadgen`.
 - **Market** (`market/`): the "BLO" shop — listing, product, cart, demo
   login (customers 2001-2003). `tracker.js` sends `page_view`,
   `product_click`, `add_to_cart`, `checkout_start`; `session_id` rides in
@@ -103,44 +113,71 @@ Improvising outside this list is fine — ask first.
      connections, not for speed. Guessed the other way round first; the
      experiment corrected it.
    - Today's API is not slow at these rates: p99 around 5 ms at 1000/s.
-     Redis will not win on latency here. What it can change is what
-     happens when MySQL is slow or down, and how far the rate can go.
+     (Written before step 2: "Redis will not win on latency here". It
+     did — see the table under step 2.)
    - "achieved" falls a little short of the rate (993 of 1000): Go's
      ticker drops a tick when the loop is late. The achieved figure is the
      one to compare.
-2. **Ingestion queue — Redis Streams + worker.** ← next. Design, as agreed
-   2026-09-28:
-   - **API** (`controllers/event.go`): validation and the `user_ip` fill stay
-     where they are. **New:** if `event_timestamp` is missing the API sets it
-     to now — once there is a queue, the database clock would record when the
-     worker got to the event, not when it arrived. Then `XADD` the event (one
-     JSON field) to stream `events` with `MAXLEN ~ 100000`, so Redis keeps a
-     bounded tail instead of growing forever.
-   - **Answer `202 Accepted`, not `201`**: stored later, not yet. A duplicate
-     `event_id` can no longer be a `409` — the insert happens after the answer
-     — so the worker treats it as already done (idempotent). The tracker and
-     `cmd/send` count any 2xx as success, so neither changes; the Events log
-     will show 202.
-   - **Redis down → `503`** from the API. No fallback to a direct insert: two
-     write paths are twice the ways to break.
-   - **Worker** (`backend/cmd/worker`): `XREADGROUP` in group `ingest`, up to
-     100 at a time, `BLOCK` 5 s when idle; `INSERT` each (the SQL moves here),
-     then `XACK`. Duplicate key (1062) → ack. Any other error → no ack; the
-     entry stays in the pending list. `XAUTOCLAIM` retries entries idle for
-     30 s; after 5 deliveries an entry goes to `events:dead` and is acked, so
-     one bad message cannot block the queue. Ctrl+C finishes the current batch
-     before exiting (graceful shutdown).
-   - **Compose**: a `redis` service, pinned image, `appendonly yes` and a
-     volume, so a Redis restart keeps the queue. `REDIS_ADDR` in
-     `backend/.env.example`. One Go dependency: `github.com/redis/go-redis/v9`
-     (speaking Redis's protocol by hand is possible but not worth it).
-   - Consequences to show the mentor: events appear in the panel once the
-     worker has written them; with the worker stopped, the shop keeps getting
-     202s, nothing shows up, and starting the worker drains the backlog.
-   - Optional: a "queued" card on the dashboard (stream length + pending
-     count) that shows when the worker falls behind.
-   - The market and the panel do not change.
-3. **Live counters in Redis.** `INCR` per hour, per day and per action,
+2. ~~**Ingestion queue — Redis Streams + worker.**~~ Done 2026-09-30
+   (branch `redis-queue`). Built as designed on 2026-09-28 — `XADD` with the
+   API's timestamp, `202`, Redis down → `503` with no fallback, worker in
+   group `ingest` (100 per read, `INSERT` then `XACK`, duplicate key → ack,
+   `events:dead` after 5 deliveries), Redis with `appendonly` on a volume,
+   one dependency (`go-redis/v9`) — with these changes, each explained in
+   its commit:
+   - **`MAXLEN ~ 100000` in `ACKED` mode** (Redis 8.2+). Plain `MAXLEN`
+     trims the oldest entries whether or not the worker has written them:
+     a backlog past 100 000 would lose events silently. `ACKED` trims only
+     acknowledged entries. The price: with the worker stopped, the stream
+     grows without limit (Redis used 23.6 MB holding 78 000 entries).
+   - **The worker takes nothing while MySQL is down** (it pings before each
+     read). Otherwise a MySQL outage longer than 5 retries would push every
+     good event into `events:dead`.
+   - **`XPENDING` + `XCLAIM` instead of `XAUTOCLAIM`**: `XPENDING` gives the
+     delivery count the 5-try rule needs.
+   - **`BLOCK` 1 s, not 5 s**: go-redis does not cut a blocking read short
+     on Ctrl+C, so an idle worker took ~3.7 s to stop. Now under 1 s.
+   - **The market's Events drawer** says "202 = alındı" instead of "201 =
+     kaydedildi" (text only; the tracker already took any 2xx as success).
+   - Redis is published on `127.0.0.1` only — it has no password.
+
+   **Measured**, 2026-09-30, same setup as the baseline above (API binary
+   on `:8081`, output to a file, 30 s per level), worker running:
+
+   | rate | achieved | status | p50 | p95 | p99 | max | queued at end | caught up after |
+   |---|---|---|---|---|---|---|---|---|
+   | 100/s | 100/s | 2999 × 202 | 1.3 ms | 2.5 ms | 4.3 ms | 16.9 ms | 0 | 0.2 s |
+   | 500/s | 498/s | 14939 × 202 | 0.6 ms | 1.1 ms | 2.2 ms | 13.7 ms | 0 | 0.2 s |
+   | 1000/s | 996/s | 29894 × 202 | 0.5 ms | 0.8 ms | 1.6 ms | 22.8 ms | 10963 | 17 s |
+   | 1000/s, 2 workers | 999/s | 29978 × 202 | 0.6 ms | 0.8 ms | 1.7 ms | 21.8 ms | 0 | 0.2 s |
+
+   Against the direct insert (pool fix rows above): p99 at 1000/s 5.4 →
+   1.6 ms, p50 1.7 → 0.5 ms. An `XADD` to Redis is cheaper than a MySQL
+   insert that must reach the disk. Every 202 became a row; nothing went
+   to `events:dead`.
+
+   What else the runs showed:
+   - **One worker writes ~630–650 events/s** (inserts one at a time). At
+     1000/s it falls behind: 10 963 queued when the load stopped, written
+     17 s later. A second worker in the same group shares the stream and
+     keeps up — the reason consumer groups exist. Faster alternatives, if
+     ever needed: a multi-row `INSERT` per batch.
+   - **Worker stopped**: 29 929 events at 1000/s all got 202, none reached
+     MySQL; starting the worker wrote all of them in 46 s.
+   - **MySQL stopped**: events kept getting 202, the worker waited, nothing
+     went to `events:dead`; with MySQL back every row arrived. An entry the
+     worker held when MySQL went away waits for the 30 s retry.
+   - **Redis stopped**: 503 — after ~1.7 s each (go-redis retries before
+     giving up; see Known shortcuts). Consumer group and queue survived the
+     restart (append-only file).
+   - **Ctrl+C mid-batch**: the batch was written and acknowledged, the
+     rest stayed queued for the next start. A refused entry (60-character
+     `event_action`) was tried 5 times ~30 s apart, then moved to
+     `events:dead` with the reason.
+
+   Not built: the optional "queued" card on the dashboard (stream length +
+   pending count). Worth doing now that a worker can fall behind.
+3. **Live counters in Redis.** ← next. `INCR` per hour, per day and per action,
    HyperLogLog for unique sessions and users. `/events/stats` reads counters
    instead of scanning the table; its JSON keeps the same shape, so the
    dashboard charts (built 2026-09-28 on SQL) do not change.
@@ -177,8 +214,9 @@ and every "What I tried / What I'd do differently" there — mine to write.
 # How to run everything
 
 ```
-docker compose up -d                 # MySQL + the Caddy proxy on port 80
+docker compose up -d                 # MySQL, Redis + the Caddy proxy on port 80
 cd backend && go run ./cmd/api       # :8080 — the shop posts here, the panel reads here
+cd backend && go run ./cmd/worker    # moves queued events into MySQL; without it nothing is stored
 cd admin && php artisan migrate      # once — panel tables in panel_db
 cd admin && php artisan db:seed      # once, on an empty panel_db — manager + worker
 cd admin && npm run dev              # Vite, leave running
@@ -279,6 +317,10 @@ Still for the mentor — schema changes are expensive to undo:
   FormRequests reject anything but `manager`/`worker`, but a hand-written
   `UPDATE users SET role='owner'` would stick and `isManager()` would answer
   false for it.
+- **Redis has no password.** Compose publishes it on `127.0.0.1:6379`
+  only, so only programs on this machine reach it — any of them can read
+  or delete the queue. A deployment sets `requirepass` (and a password in
+  `REDIS_ADDR`'s client options).
 - **The proxy answers the whole network.** Compose publishes `"80:80"`, so
   anyone on the same network (an office one included) reaches `/admin` —
   with the public seed password — and `POST /api/v1/events`. Fix when it
@@ -300,7 +342,9 @@ Still for the mentor — schema changes are expensive to undo:
   anything more than a minute ahead, but a clock running behind is stored
   as is, and any past timestamp is accepted, however old.
 - `event_id` comes from the client; the server never makes one. It is
-  checked to be a UUID and a resend is a 409.
+  checked to be a UUID. Since the queue (2026-09-30) a resend gets 202 like
+  the first send — the worker finds the row there and drops the copy — so
+  a client can no longer tell that it sent the same event twice.
 - `session_id` lives inside `event_payload`: reading it means JSON
   extraction, which no index helps (mentor question 4).
 - Market events carry `event_domain = localhost` locally — the tracker sends
@@ -340,6 +384,19 @@ Still for the mentor — schema changes are expensive to undo:
 - Three `.env` files (root, `backend/`, `admin/`) share values kept in sync
   by hand; nothing checks they agree.
 - The DSN host is hardcoded to `127.0.0.1:3306` in `backend/config/db.go`.
+- **The worker is a separate program to start.** Without it the shop
+  keeps getting 202s and nothing reaches MySQL or the panel. Nothing
+  restarts it if it stops (roadmap 11).
+- **One worker writes ~640 events/s**, one `INSERT` per event. Above
+  that the queue grows until the load drops or a second worker starts.
+- **A 503 takes ~1.7 s when Redis is down**: go-redis retries 3 times
+  with backoff before the API gives up. Failing fast would mean lower
+  `MaxRetries` / `DialTimeout` in `config/redis.go`.
+- **`events:dead` has no tool.** Entries there keep the original JSON and
+  the reason; putting one back means a hand-written `XADD` to `events`.
+- **Consumer names pile up in the group.** Every worker start registers
+  `host-pid`; old names stay listed (with nothing pending) until
+  `XGROUP DELCONSUMER` (COMMANDS.md).
 - **No graceful shutdown in the API.** `r.Run()` in `cmd/api/main.go`
   exits on Ctrl+C / `SIGTERM` at once, cutting off requests in flight.
   Harmless on a laptop; once the API runs in Docker (roadmap 11) every

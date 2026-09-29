@@ -14,7 +14,8 @@ Build order (mentor's, do not jump ahead without asking):
 - [x] MySQL
 - [x] Admin panel (PHP / Laravel)
 - [x] Demo market that sends real events (added 2026-09-28)
-- [ ] Event ingestion + Redis Streams ← next (measure with `cmd/loadgen` first)
+- [x] Event ingestion + Redis Streams (queue + worker, 2026-09-30)
+- [ ] Redis: live counters, rate limiting ← next (PLAN.md roadmap 3–4)
 - [ ] (later, maybe) swap Redis for Kafka
 
 ## Who I am

@@ -498,3 +498,32 @@ Nine commits, `ab6a8a7`..`b528b0d`, one per step, plus the docs commit that wrot
 - The pool stays, for the bound it puts on connections (no burst can reach
   MySQL's `max_connections`) and because the Redis worker will need it.
 - Recorded as a known shortcut: the API has no graceful shutdown.
+
+# Done on 2026-09-30 (branch `redis-queue`)
+
+Roadmap 1.2, the ingestion queue. Commits in order:
+
+- **Redis in compose** (`redis:8.8.3-alpine`, `appendonly yes`, own volume,
+  published on `127.0.0.1` only) and `go-redis/v9`; `config/redis.go`
+  connects at startup and names the stream, dead stream and group.
+- **`cmd/worker`**, tried on its own with `redis-cli XADD` before the API
+  used it: a valid entry became a row; the same event twice, one row; bad
+  JSON went straight to `events:dead`; an entry MySQL refused (60-character
+  `event_action`) was tried 5 times ~30 s apart, then moved to
+  `events:dead`; Ctrl+C in the middle of 3000 queued entries left the
+  batch written and acknowledged and the rest queued; a second worker took
+  over the first one's stuck entry.
+- **The API queues and answers 202.** Checked with the worker stopped
+  (29 929 × 202, nothing in MySQL, all written 46 s after the worker
+  started), MySQL stopped (202s, nothing dead, every row once MySQL was
+  back) and Redis stopped (503).
+- **`BLOCK` 5 s → 1 s**, after finding that go-redis does not interrupt a
+  blocking read on Ctrl+C: an idle worker took ~3.7 s to stop, and
+  processed an event that arrived meanwhile.
+- **Tracker text** 201 → 202.
+
+Measured with loadgen like the baseline: p99 at 1000/s 5.4 → 1.6 ms. The
+earlier note that Redis would not win on latency was wrong — an `XADD` is
+cheaper than an insert that must reach the disk. One worker writes about
+640 events/s and fell 10 963 behind in a 30 s run at 1000/s; two workers
+kept up. Numbers in PLAN.md, Roadmap 1.2.

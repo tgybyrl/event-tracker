@@ -6,13 +6,16 @@ Projede çalıştırdığımız komutlar. Yeni komut kullandıkça buraya eklene
 
 ## Projeyi ayağa kaldırma
 
-Üç terminal gerekiyor, bu sırayla:
+Dört terminal gerekiyor, bu sırayla:
 
 ```
-docker compose up -d             # 1. MySQL + Caddy proxy (port 80)
-cd backend && go run ./cmd/api   # 2. Go servisi   → :8080
-cd admin && php artisan serve    # 3. Laravel      → :8000
+docker compose up -d                # 1. MySQL + Redis + Caddy proxy (port 80)
+cd backend && go run ./cmd/api      # 2. Go servisi   → :8080
+cd backend && go run ./cmd/worker   # 3. Worker: kuyruktaki event'leri MySQL'e yazar
+cd admin && php artisan serve       # 4. Laravel      → :8000
 ```
+
+Worker çalışmıyorsa mağaza yine `202` alır ama event'ler Redis'te bekler, panelde görünmez. Worker açılınca birikenleri yazar.
 
 Sonra her şey tek adreste, **http://localhost**:
 
@@ -117,6 +120,40 @@ SELECT COUNT(*) FROM events WHERE event_platform = 'web';
 SELECT DISTINCT event_action FROM events;
 ```
 
+### Redis: kuyruğa bakma
+
+```
+docker compose exec redis redis-cli
+```
+Redis'in kendi client'ı. Şifre yok (Redis sadece bu makineye açık). Komutlar büyük/küçük harf fark etmez; çıkmak için `exit`.
+
+```
+XLEN events                          # stream'de kaç entry var (onaylanmış olanlar dahil)
+XINFO GROUPS events                  # grup "ingest": pending = verilmiş ama onaylanmamış,
+                                     #   lag = henüz hiçbir worker'a verilmemiş
+XINFO CONSUMERS events ingest        # hangi worker'lar kayıtlı, kimde kaç pending var
+XPENDING events ingest               # onaylanmamış entry sayısı, en eski/en yeni id
+XREVRANGE events + - COUNT 3         # son 3 entry (event'in JSON'u "event" alanında)
+XRANGE events:dead - +               # vazgeçilen entry'ler: asıl id, sebep, event
+```
+
+"Worker yetişiyor mu?" sorusunun cevabı `XINFO GROUPS events`'teki `lag`: sürekli büyüyorsa worker geride kalıyor, ikinci bir worker başlat.
+
+Temizlik:
+
+```
+XTRIM events ACKED MAXLEN 0          # onaylanmış (MySQL'e yazılmış) entry'leri sil
+DEL events:dead                      # dead stream'i sil
+XGROUP DELCONSUMER events ingest <ad> # kapanmış bir worker'ın adını gruptan sil (pending'i 0 olmalı)
+```
+
+**`DEL events` yapma**: henüz MySQL'e yazılmamış event'ler de silinir, consumer group da gider ve çalışan worker yeniden başlatılana kadar okuyamaz.
+
+```
+docker compose stop redis            # Redis'i durdur → API 503 döner
+docker compose start redis           # geri başlat; kuyruk ve grup diskten (appendonly) geri gelir
+```
+
 ---
 
 ## Go
@@ -124,7 +161,12 @@ SELECT DISTINCT event_action FROM events;
 ```
 cd backend && go run ./cmd/api
 ```
-`backend/cmd/api/` içindeki `package main`'i derleyip çalıştırır. Servisi `:8080`'de ayağa kaldırır. `.env`'i çalışma dizininden okuduğu için **`backend/` içinden** çalıştırmak zorunlu.
+`backend/cmd/api/` içindeki `package main`'i derleyip çalıştırır. Servisi `:8080`'de ayağa kaldırır. `.env`'i çalışma dizininden okuduğu için **`backend/` içinden** çalıştırmak zorunlu. MySQL ve Redis ayakta olmalı; biri yoksa açılışta hata verip durur.
+
+```
+cd backend && go run ./cmd/worker
+```
+Redis'teki `events` stream'ini okuyup MySQL'e yazar. 10 saniyede bir ne yaptığını basar (`stored`, `left for retry`, `dead`). Ctrl+C: elindeki batch'i bitirip 1 saniye içinde çıkar; ikinci Ctrl+C hemen öldürür. İki terminalde iki tane çalıştırılabilir, işi paylaşırlar.
 
 ```
 go build ./...
@@ -171,6 +213,8 @@ Saniyede `-rate` kadar event'i `-duration` boyunca gönderir, sonunda status say
 cd backend && go run ./cmd/api > /tmp/api.log 2>&1
 ```
 `>` normal çıktıyı (stdout) dosyaya yönlendirir, `2>&1` hata çıktısını (stderr) da aynı yere. Log'u izlemek için başka bir terminalde: `tail -f /tmp/api.log`.
+
+loadgen API'nin cevabını ölçer, yani event'in kuyruğa girişini. MySQL'e yazılması worker'ın işi: koşu bitince `XINFO GROUPS events`'teki `lag` 0'a inene kadar bekle, sonra say ya da sil.
 
 Gönderilen event'lerin hepsinde `event_domain = 'loadgen.test'` var. Silinene kadar dashboard'daki toplamlara ve saatlik grafiğe girerler, o yüzden her koşudan sonra silinmeleri gerekir:
 

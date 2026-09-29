@@ -2,7 +2,7 @@ package controllers
 
 import (
 	"bytes"
-	"errors"
+	"encoding/json"
 	"event-api/config"
 	"event-api/models"
 	"fmt"
@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/go-sql-driver/mysql"
+	"github.com/redis/go-redis/v9"
 )
 
 // How far ahead of our clock a client's timestamp may be. A little slack for
@@ -18,8 +18,10 @@ import (
 // far-future row would sit at the top of every newest-first list forever.
 const maxClockSkew = time.Minute
 
-// MySQL's error number for a duplicate key — here, an event_id already stored.
-const errDuplicateEntry = 1062
+// Roughly how many entries the event stream keeps. Only entries every
+// consumer group has acknowledged are trimmed (ACKED), so events the worker
+// has not written yet are never dropped to stay under it.
+const streamMaxLen = 100000
 
 func CreateEvent(c *gin.Context) {
 
@@ -55,28 +57,44 @@ func CreateEvent(c *gin.Context) {
 		}
 	}
 
-	// A nil Timestamp is sent as NULL, and COALESCE turns that into the
-	// database clock — same result the column DEFAULT gave before, without a
-	// second query shape for "client sent no timestamp".
-	query := `INSERT INTO events (event_id, user_id, user_ip, event_platform, event_domain, event_source, event_action, event_payload, event_timestamp) VALUES(?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, CURRENT_TIMESTAMP))`
+	// No timestamp from the client means "now". It has to be set here: the
+	// row is written later by cmd/worker, and the database clock would record
+	// when the worker got to the event, not when it arrived. Whole seconds,
+	// like the column.
+	if newEvent.Timestamp == nil {
+		now := time.Now().UTC().Truncate(time.Second)
+		newEvent.Timestamp = &now
+	}
 
-	_, err := config.DB.Exec(query, newEvent.EventID, newEvent.UserID, newEvent.UserIP, newEvent.Platform, newEvent.Domain, newEvent.Source, newEvent.Action, newEvent.Payload, newEvent.Timestamp)
-
+	body, err := json.Marshal(newEvent)
 	if err != nil {
-		// A resent event is the client's mistake, not ours: 409, not 500.
-		var mysqlErr *mysql.MySQLError
-		if errors.As(err, &mysqlErr) && mysqlErr.Number == errDuplicateEntry {
-			c.JSON(409, gin.H{"error": "event_id already exists"})
-			return
-		}
-
-		// The real error goes to our log. The client gets a generic message
-		// instead of table and column names.
-		log.Println("insert event:", err)
-		c.JSON(500, gin.H{"error": "could not store event"})
+		log.Println("encode event:", err)
+		c.JSON(500, gin.H{"error": "could not queue event"})
 		return
 	}
-	c.JSON(201, gin.H{"event_id": newEvent.EventID})
+
+	// The event goes onto the Redis stream as one field holding its JSON;
+	// cmd/worker reads it from there and inserts it into MySQL.
+	err = config.Redis.XAdd(c.Request.Context(), &redis.XAddArgs{
+		Stream: config.EventStream,
+		Mode:   "ACKED",
+		MaxLen: streamMaxLen,
+		Approx: true,
+		Values: map[string]any{"event": body},
+	}).Err()
+	if err != nil {
+		// No queue, no event: 503 tells the client to try again later. There
+		// is no fallback to inserting directly — two write paths would be
+		// twice the ways to break.
+		log.Println("queue event:", err)
+		c.JSON(503, gin.H{"error": "queue unavailable"})
+		return
+	}
+
+	// 202 Accepted: taken, not stored yet. A duplicate event_id can no longer
+	// be refused here (the insert happens after this answer); the worker
+	// finds the row already there and drops the copy.
+	c.JSON(202, gin.H{"event_id": newEvent.EventID})
 
 }
 

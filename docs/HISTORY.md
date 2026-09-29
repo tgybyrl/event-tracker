@@ -482,3 +482,19 @@ Nine commits, `ab6a8a7`..`b528b0d`, one per step, plus the docs commit that wrot
   p99 up from 7 ms to 29 ms from 500/s. Found on the way: Go's MySQL pool
   has no settings, so it opened 857 new connections in 30 s at 1000/s.
   Recorded, not fixed.
+
+# Done on 2026-09-30 (branch `db-pool`)
+
+- **The 2026-09-28 baseline was wrong about its own cause.** It blamed the
+  p99 of 29 ms on MySQL connection churn. To test that, `config/db.go` got
+  a pool (at most 25 connections, all kept idle), and old and new code were
+  measured side by side — both as built binaries with their output going
+  to a file. Result: p99 about 5 ms for **both**. The pool took new MySQL
+  connections from 412 to 25 per 30 s at 1000/s and changed no latency.
+  Pointing loadgen once more at the API running in a terminal gave p99
+  34 ms again: the tail came from Gin writing one log line per request to
+  a terminal. PLAN.md's baseline table was replaced with the file-logging
+  numbers, and COMMANDS.md says how to run the API for a measurement.
+- The pool stays, for the bound it puts on connections (no burst can reach
+  MySQL's `max_connections`) and because the Redis worker will need it.
+- Recorded as a known shortcut: the API has no graceful shutdown.

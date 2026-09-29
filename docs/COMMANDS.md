@@ -165,6 +165,13 @@ cd backend && go run ./cmd/loadgen -rate 500 -duration 30s
 ```
 Saniyede `-rate` kadar event'i `-duration` boyunca gönderir, sonunda status sayılarını ve latency p50 / p95 / p99 / max değerlerini basar. Default'lar 500/s ve 30s. `-url` ile hedef değişir (default `http://127.0.0.1:8080/api/v1/events`, Caddy'siz). **Go servisi ayakta olmalı.** Baseline ölçümü PLAN.md'de (Roadmap 1.1).
 
+**Ölçerken API'nin çıktısı dosyaya gitsin, terminale değil.** Gin her istek için bir log satırı basar. Terminale yazmak yavaştır ve istekler bunu bekler: aynı kodda p99 terminalle 34 ms, dosyayla 5 ms çıktı. Karşılaştırılabilir sayı için API'yi şöyle başlat:
+
+```
+cd backend && go run ./cmd/api > /tmp/api.log 2>&1
+```
+`>` normal çıktıyı (stdout) dosyaya yönlendirir, `2>&1` hata çıktısını (stderr) da aynı yere. Log'u izlemek için başka bir terminalde: `tail -f /tmp/api.log`.
+
 Gönderilen event'lerin hepsinde `event_domain = 'loadgen.test'` var. Silinene kadar dashboard'daki toplamlara ve saatlik grafiğe girerler, o yüzden her koşudan sonra silinmeleri gerekir:
 
 ```

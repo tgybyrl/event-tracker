@@ -4,7 +4,7 @@ This file is the **current state and the road ahead**. How we got here, with
 the reasoning at each step, is in `docs/HISTORY.md`; the decisions in short
 form are in `docs/DECISIONS.md`; commands are in `docs/COMMANDS.md`.
 
-Last updated 2026-09-28.
+Last updated 2026-09-30.
 
 # Scope
 
@@ -67,32 +67,47 @@ Improvising outside this list is fine — ask first.
    not earlier ones answered, so a slow API shows as latency, not as fewer
    requests. Events use `event_domain = "loadgen.test"` and no
    `session_id`; the `DELETE` is in COMMANDS.md. Run the same three levels
-   again after step 2.
+   again after step 2, **set up the same way** (below).
 
-   **Baseline — direct MySQL insert**, 2026-09-28, M1 Pro (10 cores),
-   API via `go run` in Gin debug mode (logs every request), straight to
-   `:8080` (no Caddy), MySQL 8.4 in Docker, 30 s per level:
+   **Baseline — direct MySQL insert**, 2026-09-30, M1 Pro (10 cores).
+   Setup: the API built as a binary, run on `:8081` with its output
+   (Gin debug mode, one log line per request) going **to a file**,
+   loadgen straight to it (no Caddy), MySQL 8.4 in Docker, 30 s per level,
+   old and new code alternated at each level:
 
-   | rate | achieved | status | p50 | p95 | p99 | max | new MySQL conns | max used conns |
-   |---|---|---|---|---|---|---|---|---|
-   | 100/s | 100/s | 3000 × 201 | 2.6 ms | 4.6 ms | 7.2 ms | 16.8 ms | 2 | 5 |
-   | 500/s | 494/s | 14809 × 201 | 1.5 ms | 4.7 ms | 29.1 ms | 95.3 ms | 468 | 48 |
-   | 1000/s | 997/s | 29909 × 201 | 1.6 ms | 3.1 ms | 29.2 ms | 58.7 ms | 857 | 51 |
+   | rate | code | achieved | status | p50 | p95 | p99 | max | new MySQL conns | max used |
+   |---|---|---|---|---|---|---|---|---|---|
+   | 100/s | before pool fix | 100/s | 2999 × 201 | 2.6 ms | 3.9 ms | 6.0 ms | 13.0 ms | 2 | 5 |
+   | 100/s | pool fix | 100/s | 3000 × 201 | 2.5 ms | 4.3 ms | 6.3 ms | 16.5 ms | 4 | 5 |
+   | 500/s | before pool fix | 497/s | 14925 × 201 | 1.8 ms | 2.8 ms | 4.7 ms | 37.1 ms | 114 | 18 |
+   | 500/s | pool fix | 497/s | 14919 × 201 | 1.9 ms | 2.8 ms | 5.3 ms | 39.7 ms | 20 | 21 |
+   | 1000/s | before pool fix | 996/s | 29880 × 201 | 1.7 ms | 2.7 ms | 5.0 ms | 47.4 ms | 412 | 47 |
+   | 1000/s | pool fix | 993/s | 29805 × 201 | 1.7 ms | 2.4 ms | 5.4 ms | 52.2 ms | 25 | 28 |
 
-   No errors at any level; every 201 was a row in the table. What it shows:
-   - Today's API is not slow at these rates. Redis will not win on p50;
-     what it can change is the tail (p99) and what happens when MySQL is
-     slow or down.
-   - **Connection churn.** From 500/s up, Go opened a new MySQL connection
-     for every ~30 requests (857 in 30 s at 1000/s). `config/db.go` sets
-     no pool limits, and Go's default keeps only 2 idle connections, so
-     under load it opens and closes them constantly. Likely a source of the
-     p99 jump from 7 to 29 ms — not proven. Fix (not done, ask first):
-     `SetMaxIdleConns` / `SetMaxOpenConns` in `config/db.go`. With the
-     queue the worker does the inserts, so it matters less for the API.
-   - "achieved" falls a little short of the rate (494 of 500): Go's ticker
-     drops a tick when the loop is late. The achieved figure is the one to
-     compare.
+   The "pool fix" rows are today's code (branch `db-pool`) and the ones to
+   compare Redis against. No errors at any level; every 201 was a row.
+
+   What the runs showed:
+   - **The first baseline measured the terminal.** On 2026-09-28 the API
+     ran with `go run` in a terminal, and every request's log line went to
+     that terminal: p99 29 ms at 500 and 1000/s. Same code, same load,
+     logs to a file: p99 5 ms. Rechecked 2026-09-30 against the
+     terminal-logging API: p99 34.2 ms, p95 9.9 ms. Writing to a terminal
+     is slow and requests wait for it. **Measure with the API's output
+     going to a file** (COMMANDS.md).
+   - **Connection churn was a symptom, not the cause.** With no pool
+     settings Go kept 2 idle MySQL connections and opened a new one per
+     overlapping request (412 in 30 s at 1000/s; 1485 when slowed down by
+     the terminal). Capping and keeping them (`config/db.go`, 25) brought
+     that to 25 — and did not change p99. Kept for the bound it puts on
+     connections, not for speed. Guessed the other way round first; the
+     experiment corrected it.
+   - Today's API is not slow at these rates: p99 around 5 ms at 1000/s.
+     Redis will not win on latency here. What it can change is what
+     happens when MySQL is slow or down, and how far the rate can go.
+   - "achieved" falls a little short of the rate (993 of 1000): Go's
+     ticker drops a tick when the loop is late. The achieved figure is the
+     one to compare.
 2. **Ingestion queue — Redis Streams + worker.** ← next. Design, as agreed
    2026-09-28:
    - **API** (`controllers/event.go`): validation and the `user_ip` fill stay
@@ -325,9 +340,11 @@ Still for the mentor — schema changes are expensive to undo:
 - Three `.env` files (root, `backend/`, `admin/`) share values kept in sync
   by hand; nothing checks they agree.
 - The DSN host is hardcoded to `127.0.0.1:3306` in `backend/config/db.go`.
-- No MySQL connection pool settings in `backend/config/db.go`: Go keeps
-  2 idle connections and has no upper limit, so under load it opens and
-  closes connections constantly (measured by loadgen, Roadmap 1.1).
+- **No graceful shutdown in the API.** `r.Run()` in `cmd/api/main.go`
+  exits on Ctrl+C / `SIGTERM` at once, cutting off requests in flight.
+  Harmless on a laptop; once the API runs in Docker (roadmap 11) every
+  restart drops a few requests. Fix: `http.Server` with `Shutdown(ctx)`
+  on a signal.
 - Gin's validation errors go back to the client as-is (`Key:
   'Event.EventID' Error:Field validation for ...`); a polished API would
   name the JSON fields.

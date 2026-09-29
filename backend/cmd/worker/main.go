@@ -23,8 +23,12 @@ const (
 	// Entries asked for per read. One XACK then confirms the whole batch.
 	batchSize = 100
 	// How long a read waits for new entries before returning empty, so the
-	// loop comes round to its other work even when nothing arrives.
-	blockFor = 5 * time.Second
+	// loop comes round to its other work even when nothing arrives. Also how
+	// long Ctrl+C can take on an idle worker: go-redis does not cut a
+	// blocking read short when the context is cancelled, so the worker
+	// notices the signal only when the read returns (measured: 5 s gave
+	// ~3.7 s waits). An idle read a second costs Redis nothing.
+	blockFor = 1 * time.Second
 	// An entry handed out this long ago and still not acknowledged is taken
 	// back and tried again (a failed insert, or a worker that crashed).
 	claimIdle = 30 * time.Second

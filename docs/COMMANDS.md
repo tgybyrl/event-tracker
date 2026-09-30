@@ -33,7 +33,7 @@ docker compose exec proxy caddy reload --config /etc/caddy/Caddyfile   # Caddyfi
 docker compose logs -f proxy                            # proxy loglarını izle
 ```
 
-Panelde geliştirme yapıyorsan dördüncü bir terminalde Vite de açık olmalı:
+Panelde geliştirme yapıyorsan beşinci bir terminalde Vite de açık olmalı:
 
 ```
 cd admin && npm run dev          # → :5173
@@ -71,7 +71,7 @@ Container'ı siler. **Veri silinmez** — `mysql_data` volume'unda kalır.
 ```
 docker compose down -v
 ```
-Container'ı **ve veriyi** siler. Tablo ve tüm satırlar gider, sıfırdan schema yüklemen gerekir.
+Container'ı **ve veriyi** siler: MySQL'in tabloları ve satırları (`mysql_data`) ile Redis'teki kuyruk (`redis_data`). Sıfırdan schema yüklemen gerekir.
 
 ### Veritabanlarının kurulumu
 
@@ -343,7 +343,16 @@ Dosya yoksa Vite kapalı demektir. Laravel o zaman `public/build/` içindeki **e
 ```
 docker compose ps
 ```
-`db` container'ı ayakta mı? Değilse `docker compose up -d db`.
+`db` ve `redis` container'ları ayakta mı? Değilse `docker compose up -d`. Hata `redis at 127.0.0.1:6379: ...` diye başlıyorsa Redis, `dial tcp 127.0.0.1:3306` ise MySQL kapalı. API de worker da açılırken ikisine bağlanır; biri yoksa hemen durur.
+
+**Mağaza `202` alıyor ama panelde yeni event yok**
+
+Worker çalışmıyor ya da geride kalmış. Worker'ın terminaline bak (`cd backend && go run ./cmd/worker`). Kuyrukta bekleyen var mı:
+
+```
+docker compose exec redis redis-cli XINFO GROUPS events
+```
+`lag` bekleyen, `pending` alınmış ama henüz yazılmamış event sayısı. Worker açılınca ikisi de 0'a iner.
 
 **Laravel `SQLSTATE[HY000] [1045] Access denied`**
 
@@ -378,9 +387,9 @@ Go servisi ayaktayken `POST http://127.0.0.1:8080/api/v1/events`:
 
 - **Body → raw → JSON** seçili olmalı.
 - Zorunlu alanlar: `event_id` (UUID), `event_platform`, `event_domain`, `event_source`, `event_action`, `event_payload` (JSON object).
-- Opsiyonel: `user_id`, `user_ip`, `event_timestamp` (RFC 3339, ör. `2026-09-20T14:30:00Z`). `event_timestamp` gönderilmezse veritabanının saati kullanılır; gelecekteki bir zaman `400` alır.
+- Opsiyonel: `user_id`, `user_ip`, `event_timestamp` (RFC 3339, ör. `2026-09-20T14:30:00Z`). `event_timestamp` gönderilmezse API o anın saatini (UTC) koyar; gelecekteki bir zaman `400` alır.
 
-Beklenen cevap: `201` + `{"event_id": "..."}`. Aynı `event_id` ikinci kez gelirse `409`, eksik ya da bozuk alan `400`.
+Beklenen cevap: `202` + `{"event_id": "..."}` — kuyruğa alındı; satırı worker birkaç ms içinde yazar (worker kapalıysa açılınca). Aynı `event_id` ikinci kez gelirse yine `202`, ama tabloda tek satır olur. Eksik ya da bozuk alan `400`, Redis kapalıysa `503`.
 
 ---
 

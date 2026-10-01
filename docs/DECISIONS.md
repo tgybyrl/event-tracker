@@ -322,6 +322,19 @@ What I chose and why: the API adds the event to the Redis stream `events`
   - Duplicates: `409` is gone; the worker acks a duplicate key as done.
   - `BLOCK 1s`: go-redis ignores a cancelled context during a blocking
     read, so Ctrl+C on an idle worker waited out the block.
+  - **The worker is its own program (`cmd/worker`), not a goroutine inside
+    the API.** A consumer goroutine started in `cmd/api/main.go` would also
+    have worked and is one program less to run. Separate, because:
+    writers scale on their own (one worker ~640/s fell behind at 1000/s, a
+    second `go run ./cmd/worker` kept up — the API needed no second copy at
+    p99 1.6 ms); a panic in the worker does not take down the endpoint that
+    accepts events; the worker can be stopped and started without touching
+    the shop (the "worker stopped, shop still gets 202, backlog drains on
+    start" demo depends on it); its MySQL connections and CPU are not
+    shared with request handling; and producer / consumer as separate
+    programs is the shape Kafka keeps. Price: one more program to start —
+    forgotten, the shop gets 202s and the panel shows nothing — and two
+    programs that must agree on names (`config/redis.go`, `models.Event`).
   Measured: p99 at 1000/s 5.4 → 1.6 ms; one worker writes ~640/s, two keep
   up with 1000/s.
 What I'd do differently: TODO

@@ -15,8 +15,8 @@ func main() {
 
 	// MySQL for the read endpoints; Redis for POST, which queues events for
 	// cmd/worker instead of inserting them.
-	config.ConnectDB()
-	config.ConnectRedis()
+	config.ConnectDB()    //MySQL e bağlanıyor
+	config.ConnectRedis() //Redis e bağlanıyor
 	config.LoadDisplayLocation()
 
 	// Fail closed: with no key configured the read endpoints would have
